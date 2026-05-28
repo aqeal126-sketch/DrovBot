@@ -4,7 +4,9 @@ from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 # التوكن الخاص بمتجر Drov TG
-API_TOKEN = '8783299618:AAGWIUnV1EBH_hRTKJa0gMhGhOqnNnWeHHg'
+import os
+API_TOKEN = os.getenv('BOT_TOKEN')
+
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
