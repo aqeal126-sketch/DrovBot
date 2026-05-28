@@ -26,7 +26,37 @@ def get_main_menu():
     )
 
 @dp.message()
+@dp.message()
 async def handle_messages(message: types.Message):
+    # مكان وضع الكود هو هنا تحت أمر start
+    if message.text == '/start':
+        user_id = message.from_user.id
+        
+        # 1. تصميم الأزرار (هذا هو الكود الذي يوضع داخل الدالة)
+        inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🛒 شراء حساب", callback_data="buy_account")],
+            [InlineKeyboardButton(text="📂 شراء جلسات", callback_data="buy_session"), 
+             InlineKeyboardButton(text="📞 SMS - NUMBER", callback_data="sms_number")],
+            [InlineKeyboardButton(text="👤 الدعم الفني", url="https://t.me/xq_7d"), 
+             InlineKeyboardButton(text="🌐 الوكلاء", callback_data="agents")],
+            [InlineKeyboardButton(text="💳 شحن رصيد", callback_data="recharge")],
+            [InlineKeyboardButton(text="✅ قناة التفعيلات", url="https://t.me/drov70"), 
+             InlineKeyboardButton(text="⚙️ مشترياتي", callback_data="my_orders")],
+            [InlineKeyboardButton(text="🔗 الإحالة", callback_data="referral")]
+        ])
+
+        # 2. نص الرسالة
+        text = (
+            f"أهلاً بك في - 𝗗𝗿𝗼𝘃 𝗧𝗚 👋\n\n"
+            f"🚀 أقوى سوق لبيع وشراء حسابات تيليجرام الجاهزة والجديدة لجميع الدول حول العالم 🌐.\n\n"
+            f"- ايديك: {user_id} 🆔.\n"
+            f"- 👍 رصيدك: 0.0$ 💵.\n\n"
+            f"👍 ابدأ باستخدام البوت الآن بالضغط على الأزرار بالأسفل ⬇️."
+        )
+        
+        # 3. إرسال الرسالة ومعها الأزرار الملاصقة
+        await message.answer(text, reply_markup=inline_kb)
+        
     
     # 1. أمر البدء
     if message.text == '/start':
