@@ -1,15 +1,18 @@
 import os
 import asyncio
+from datetime import datetime
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
-# جلب التوكن من Railway
+# جلب التوكن من إعدادات Railway
 API_TOKEN = os.getenv('BOT_TOKEN')
+# ضع رقم قناتك هنا الذي استخرجناه:
+CHANNEL_ID = "-1003077671245" 
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-# دالة القائمة الرئيسية
+# القائمة الثابتة (التي تظهر أسفل الشاشة)
 def get_main_menu():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -24,7 +27,8 @@ def get_main_menu():
 
 @dp.message()
 async def handle_messages(message: types.Message):
-    # أمر البدء
+    
+    # 1. أمر البدء
     if message.text == '/start':
         user_id = message.from_user.id
         text = (
@@ -36,27 +40,44 @@ async def handle_messages(message: types.Message):
         )
         await message.answer(text, reply_markup=get_main_menu())
 
-    # زر الإحالة
+    # 2. زر قناة التفعيلات
+    elif message.text == "✅ قناة التفعيلات":
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📢 اضغط للذهاب للقناة", url="https://t.me/drov70")]
+        ])
+        await message.answer("تفضل، هذه هي قناة التفعيلات الخاصة بنا:", reply_markup=kb)
+
+    # 3. زر الإحالة
     elif message.text == "🔗 الإحالة":
         user_id = message.from_user.id
         link = f"https://t.me/dro7bot?start={user_id}"
-        text = (
-            f"🤑 ⌯ إربح دولارات الآن مجاناً عبر مشاركة رابط البوت إلى أصدقائك 👥 "
-            f"واحصل على 0.01 دولار مقابل كل شخص يقوم بالدخول إلى البوت عبر الرابط الخاص بك ✅.\n\n"
-            f"رابطك الخاص:\n{link}"
-        )
-        await message.answer(text)
+        await message.answer(f"🤑 ⌯ إربح دولارات الآن مجاناً عبر مشاركة رابط البوت:\n\n{link}")
 
-    # زر الدعم الفني
+    # 4. زر الدعم الفني
     elif message.text == "💻 الدعم الفني":
-        support_kb = InlineKeyboardMarkup(inline_keyboard=[
+        kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="💬 اضغط هنا للتحويل للخاص", url="https://t.me/xq_7d")]
         ])
-        await message.answer("أهلاً بك! يمكنك التواصل مع الإدارة مباشرة عبر الرابط بالأسفل:", reply_markup=support_kb)
+        await message.answer("للتواصل مع الإدارة مباشرة:", reply_markup=kb)
 
-    # ردود افتراضية للأزرار الأخرى
-    elif message.text in ["🛒 شراء حساب", "📞 SMS - NUMBER", "📂 شراء جلسات", "💳 شحن رصيد", "✅ قناة التفعيلات", "⚙️ مشترياتي"]:
-        await message.answer(f"لقد اخترت: {message.text} - هذا القسم تحت التطوير حالياً، انتظر التحديثات!")
+    # 5. محاكاة الشراء وإرسال تقرير للقناة (مثال)
+    elif message.text == "🛒 شراء حساب":
+        await message.answer("تمت عملية الشراء! جاري معالجة الطلب...")
+        report = (
+            f"- تم شراء حساب جديد من البوت\n\n"
+            f"- الدولة : العراق 🇮🇶\n"
+            f"- المنصة : تليجرام\n"
+            f"- الرقم : *****88\n"
+            f"- السعر : 1.5$\n"
+            f"- العميل : {message.from_user.id}\n"
+            f"- كود التفعيل : 12345\n"
+            f"- الحالة : تم التفعيل ✅\n"
+            f"- التاريخ : {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        )
+        try:
+            await bot.send_message(CHANNEL_ID, report)
+        except Exception as e:
+            await message.answer("حدث خطأ أثناء إرسال التقرير للقناة، تأكد أن البوت مشرف فيها!")
 
 async def main():
     await dp.start_polling(bot)
