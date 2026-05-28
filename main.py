@@ -3,15 +3,14 @@ import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-# جلب التوكن
+# جلب التوكن من Railway
 API_TOKEN = os.getenv('BOT_TOKEN')
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-@dp.message()
-async def send_welcome(message: types.Message):
-    # هنا نضع القائمة (الأزرار الثابتة أسفل الشاشة)
+# تعريف القائمة الثابتة (مثل ديفل)
+def get_main_menu():
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🛒 شراء حساب"), KeyboardButton(text="📞 SMS - NUMBER")],
@@ -22,14 +21,25 @@ async def send_welcome(message: types.Message):
         ],
         resize_keyboard=True
     )
-    
-    # التحقق من أمر البدء
+    return keyboard
+
+@dp.message()
+async def handle_messages(message: types.Message):
     if message.text == '/start':
-        await message.answer("أهلاً بك في بوت الخدمات، اختر ما تحتاجه:", reply_markup=keyboard)
+        user_id = message.from_user.id
+        # رسالتك الترحيبية مع المتغيرات
+        text = (
+            f"أهلاً بك في - 𝗗𝗿𝗼𝘃 𝗧𝗚 👋\n\n"
+            f"🚀 أقوى سوق لبيع وشراء حسابات تيليجرام الجاهزة والجديدة لجميع الدول حول العالم 🌐.\n\n"
+            f"- ايديك: {user_id} 🆔.\n"
+            f"- 👍 رصيدك: 0.0$ 💵.\n\n"
+            f"👍 ابدأ باستخدام البوت الآن بالضغط على الأزرار بالأسفل ⬇️."
+        )
+        await message.answer(text, reply_markup=get_main_menu())
     
-    # إضافة ردود فعل للأزرار (مثلاً عند الضغط على شحن رصيد)
+    # يمكنك إضافة ردود للأزرار هنا مستقبلاً
     elif message.text == "💳 شحن رصيد":
-        await message.answer("قم بتحويل الرصيد إلى المعرف التالي: ...")
+        await message.answer("يرجى إرسال وصل التحويل للإدارة.")
 
 async def main():
     await dp.start_polling(bot)
