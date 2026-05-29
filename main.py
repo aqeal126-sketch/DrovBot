@@ -19,7 +19,7 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
 # --- تأسيس النواة وقواعد البيانات الشاملة ---
-conn = sqlite3.connect('sovereign_store_v5.db', check_same_thread=False)
+conn = sqlite3.connect('sovereign_store_v6.db', check_same_thread=False)
 cursor = conn.cursor()
 
 # جدول المستخدمين مع الرصيد والإحالات والهدية اليومية
@@ -61,7 +61,6 @@ def get_main_keyboard(user_id):
         [InlineKeyboardButton(text="🔗 رابط الإحالة", callback_data="main_referral"), InlineKeyboardButton(text="📢 قناة التفعيلات", url=CHANNEL_URL)],
         [InlineKeyboardButton(text="👨‍💻 الدعم الفني", url=MY_ACCOUNT_URL)]
     ]
-    # زر الإعدادات للمالك فقط يظهر في الأسفل لراحتك في التحكم
     if user_id == SUPER_ADMIN:
         kb.append([InlineKeyboardButton(text="⚙️ الإعدادات وصلاحيات التحكم الكاملة", callback_data="super_admin_panel")])
         
@@ -87,7 +86,6 @@ def get_store_keyboard(parent_id=0):
             row = []
     if row: kb.append(row)
     
-    # أزرار العودة والتنقل الذكي
     if parent_id != 0:
         cursor.execute('SELECT parent_id FROM elements WHERE id=?', (parent_id,))
         gp = cursor.fetchone()
@@ -98,7 +96,7 @@ def get_store_keyboard(parent_id=0):
         
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- أمر البداية مع دعم نظام الإحالات الذكي ---
+# --- أمر البداية مع رسالة الترحيب المخصصة مالتك ---
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
     user_id = message.from_user.id
@@ -111,11 +109,14 @@ async def start_cmd(message: types.Message):
         if referrer_id != user_id:
             referred_by = referrer_id
 
-    cursor.execute('SELECT user_id FROM users WHERE user_id=?', (user_id,))
+    # تسجيل المستخدم أو تحديث بياناته
+    cursor.execute('SELECT user_id, balance FROM users WHERE user_id=?', (user_id,))
     exists = cursor.fetchone()
+    
     if not exists:
         cursor.execute('INSERT INTO users (user_id, username, referred_by) VALUES (?, ?, ?)', (user_id, username, referred_by))
         conn.commit()
+        user_balance = 0.0
         if referred_by:
             cursor.execute('UPDATE users SET balance = balance + 5 WHERE user_id=?', (referred_by,))
             conn.commit()
@@ -123,22 +124,41 @@ async def start_cmd(message: types.Message):
                 await bot.send_message(chat_id=referred_by, text=f"🎉 قام {username} بالدخول للبوت عبر رابطك، وتمت إضافة 5 نقاط لرصيدك!")
             except: pass
     else:
+        user_balance = exists[1]
         cursor.execute('UPDATE users SET username=? WHERE user_id=?', (username, user_id))
         conn.commit()
         
-    welcome = f"🔥 أهلاً بك في البوت الرسمي مالتنا!\n\n"
+    # رسالة الترحيب الرسمية مالتك بعد التعديل وجلب البيانات تلقائياً
+    welcome = (
+        f"أهلاً بكم في -  Drov TG   👋\n\n"
+        f"🚀 أقوى سوق لبيع وشراء حسابات تيليجرام الجاهزة والجديدة لجميع الدول حول العالم 🌐.\n\n"
+        f"-  ايديك: `{user_id}` 🆔.\n"
+        f"- 👍 رصيدك:  `{user_balance}` نقطة 💵.\n\n"
+        f"👍 ابدأ باستخدام البوت الآن بالضغط على الأزرار بالأسفل ⬇️."
+    )
+    
+    # رسالة تنبيه للمالك تظهر بشكل مخفي ومرتب فوق النص الأساسي
     if user_id == SUPER_ADMIN:
-        welcome += "👑 مرحباً بك يا سيادة المالك المطلق، كامل صلاحيات البناء مفعّلة لك الآن من زر الإعدادات بالأسفل."
-    else:
-        welcome += "يسعدنا خدمتك، اختر ما تحتاجه من القائمة المخططة بدقة:"
+        welcome = "👑 **مرحباً بك يا سيادة المالك المطلق (لوحة التحكم متوفرة بالأسفل)**\n\n" + welcome
         
-    await message.answer(welcome, reply_markup=get_main_keyboard(user_id))
+    await message.answer(welcome, reply_markup=get_main_keyboard(user_id), parse_mode="Markdown")
 
 # --- معالجة الأزرار الثابتة حسب المخطط مالتك ---
 
 @dp.callback_query(F.data == "back_to_main")
 async def back_to_main(call: types.CallbackQuery):
-    await call.message.edit_text("🔥 القائمة الرئيسية للمتجر:", reply_markup=get_main_keyboard(call.from_user.id))
+    user_id = call.from_user.id
+    cursor.execute('SELECT balance FROM users WHERE user_id=?', (user_id,))
+    user_balance = cursor.fetchone()[0]
+    
+    welcome = (
+        f"أهلاً بكم في -  Drov TG   👋\n\n"
+        f"🚀 أقوى سوق لبيع وشراء حسابات تيليجرام الجاهزة والجديدة لجميع الدول حول العالم 🌐.\n\n"
+        f"-  ايديك: `{user_id}` 🆔.\n"
+        f"- 👍 رصيدك:  `{user_balance}` نقطة 💵.\n\n"
+        f"👍 ابدأ باستخدام البوت الآن بالضغط على الأزرار بالأسفل ⬇️."
+    )
+    await call.message.edit_text(welcome, reply_markup=get_main_keyboard(user_id), parse_mode="Markdown")
 
 # 1. زر الشراء (عرض الأقسام)
 @dp.callback_query(F.data == "main_buy")
@@ -152,7 +172,7 @@ async def main_charge(call: types.CallbackQuery):
     cursor.execute('SELECT balance FROM users WHERE user_id=?', (user_id,))
     balance = cursor.fetchone()[0]
     
-    text = f"💰 **<b>قسم شحن الرصيد والنقاط</b>**\n\n"
+    text = f"💰 **قسم شحن الرصيد والنقاط**\n\n"
     text += f"💳 رصيدك الحالي: `{balance}` نقطة.\n\n"
     text += "يمكنك تجميع النقاط مجاناً عبر الهدية اليومية، أو التواصل معي مباشرة لشحن الرصيد عبر حسابي."
     
@@ -189,7 +209,7 @@ async def get_daily_gift(call: types.CallbackQuery):
         try: await call.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
         except: pass
 
-# 3. زر مشترياتي (تم إصلاح السطر 207 المكرر هنا بنجاح)
+# 3. زر مشترياتي
 @dp.callback_query(F.data == "main_purchases")
 async def main_purchases(call: types.CallbackQuery):
     user_id = call.from_user.id
@@ -249,7 +269,7 @@ async def navigate_system(call: types.CallbackQuery):
         conn.commit()
         await call.message.answer_photo(photo=content, caption=f"📸 {name}\n\n*(تمت إضافة الملف إلى سجل مشترياتك)*")
 
-# --- ⚙️ لوحة الإعدادات والتحكم للمالك فقط (صلاحيات كاملة مصلحة) ---
+# --- ⚙️ لوحة الإعدادات والتحكم للمالك فقط ---
 @dp.callback_query(F.data == "super_admin_panel")
 async def super_admin_panel(call: types.CallbackQuery):
     if call.from_user.id != SUPER_ADMIN:
@@ -260,7 +280,7 @@ async def super_admin_panel(call: types.CallbackQuery):
         [InlineKeyboardButton(text="📢 إذاعة رسالة إعلان للكل", callback_data="adm_broadcast"), InlineKeyboardButton(text="📊 إحصائيات البوت كاملة", callback_data="adm_stats")],
         [InlineKeyboardButton(text="🔙 إغلاق اللوحة الإدارية", callback_data="back_to_main")]
     ])
-    await call.message.edit_text("⚙️ **لوحة المالك العليا والتحكم المطلق (God Mode)**:\nتم ترتيب الأزرار وإصلاح الأخطاء البرمجية السابقة لضمان استقرار السيرفر:", reply_markup=kb)
+    await call.message.edit_text("⚙️ **لوحة المالك العليا والتحكم المطلق (God Mode)**:\nيمكنك التحكم بمحتوى البوت الشجري بالكامل وإضافة الأزرار من هنا:", reply_markup=kb)
 
 # --- نظام البناء الديناميكي لإضافة أزرار تحت القائمة الشجرية للشراء ---
 @dp.callback_query(F.data == "adm_add_element")
