@@ -7,16 +7,16 @@ from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiohttp import web  # مكتبة الويب لخدعة الـ Port ومنع الـ Completed
+from aiohttp import web  # مكتبة الويب لخدعة الـ Port
 
-# --- الإعدادات الثابتة للبوت مالتنا ---
+# --- الإعدادات الثابتة للبوت ---
 API_TOKEN = os.getenv('BOT_TOKEN')
 SUPER_ADMIN = 8333784255  # معرف المالك المطلق
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-DB_NAME = 'drov_production_v13.db'
+DB_NAME = 'drov_production_v14.db'
 
 # --- تأسيس قاعدة البيانات ---
 def init_db():
@@ -184,7 +184,7 @@ async def back_to_main(call: types.CallbackQuery):
 
 @dp.callback_query(F.data == "main_buy")
 async def main_buy(call: types.CallbackQuery):
-    await call.message.edit_text("🛒 أقسام المتجر والمنتجات المتوفرة الديناميكية:", reply_markup=get_store_keyboard(0))
+    await call.message.edit_text("🛒 أقسام المتجر والمنتجات المتوفرة:", reply_markup=get_store_keyboard(0))
 
 @dp.callback_query(F.data == "main_charge")
 async def main_charge(call: types.CallbackQuery):
@@ -277,7 +277,7 @@ async def navigate_system(call: types.CallbackQuery):
         else:
             await call.message.answer(f"📦 **{name}**\n\n{content}")
 
-# ================= ⚙️ لوحة الإعدادات الشاملة والإدارة المطلقة =================
+# ================= ⚙️ لوحة الإعدادات =================
 
 @dp.callback_query(F.data == "super_admin_panel")
 async def super_admin_panel(call: types.CallbackQuery):
@@ -289,7 +289,7 @@ async def super_admin_panel(call: types.CallbackQuery):
         [InlineKeyboardButton(text="🔗 تعديل رابط القناة", callback_data="change_channel"), InlineKeyboardButton(text="👨‍💻 تعديل رابط الدعم", callback_data="change_support")],
         [InlineKeyboardButton(text="🔙 إغلاق اللوحة", callback_data="back_to_main")]
     ]
-    await call.message.edit_text("👑 **مرحباً بك في لوحة التحكم الإدارية المطلقة**\nالتحكم الآن بالكامل من الأزرار بدون الحاجة لتعديل الكود:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+    await call.message.edit_text("👑 **مرحباً بك في لوحة التحكم الإدارية المطلقة:**", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
 def get_admin_elements_keyboard(action_prefix):
     conn = sqlite3.connect(DB_NAME)
@@ -306,7 +306,7 @@ def get_admin_elements_keyboard(action_prefix):
 
 @dp.callback_query(F.data == "adm_edit_button")
 async def edit_button_list(call: types.CallbackQuery):
-    await call.message.edit_text("✏️ **اختر الزر المراد تعديل اسمه فوراً من القائمة أدناه:**", reply_markup=get_admin_elements_keyboard("click_edit"))
+    await call.message.edit_text("✏️ **اختر الزر المراد تعديل اسمه فوراً:**", reply_markup=get_admin_elements_keyboard("click_edit"))
 
 @dp.callback_query(F.data.startswith("click_edit_"))
 async def get_button_to_edit(call: types.CallbackQuery, state: FSMContext):
@@ -317,7 +317,7 @@ async def get_button_to_edit(call: types.CallbackQuery, state: FSMContext):
     res = cursor.fetchone()
     conn.close()
     await state.update_data(button_id=button_id)
-    await call.message.answer(f"📝 الاسم الحالي للزر هو: **{res[0]}**\n\nأرسل الآن الاسم الجديد الذي تريده:")
+    await call.message.answer(f"📝 الاسم الحالي للزر هو: **{res[0]}**\n\nأرسل الآن الاسم الجديد:")
     await state.set_state(SystemStates.edit_button_new_name)
 
 @dp.message(SystemStates.edit_button_new_name)
@@ -335,7 +335,7 @@ async def save_new_name(message: types.Message, state: FSMContext):
 
 @dp.callback_query(F.data == "adm_delete_button")
 async def delete_button_list(call: types.CallbackQuery):
-    await call.message.edit_text("🗑 **اختر الزر المراد حذفه نهائياً بلمسة واحدة:**", reply_markup=get_admin_elements_keyboard("click_delete"))
+    await call.message.edit_text("🗑 **اختر الزر المراد حذفه نهائياً:**", reply_markup=get_admin_elements_keyboard("click_delete"))
 
 @dp.callback_query(F.data.startswith("click_delete_"))
 async def perform_button_delete(call: types.CallbackQuery):
@@ -345,41 +345,41 @@ async def perform_button_delete(call: types.CallbackQuery):
     cursor.execute("DELETE FROM elements WHERE id=?", (button_id,))
     conn.commit()
     conn.close()
-    await call.answer("✅ تم حذف الزر وكل محتوياته من المتجر!", show_alert=True)
-    await call.message.edit_text("🗑 **اختر الزر المراد حذفه نهائياً بلمسة واحدة:**", reply_markup=get_admin_elements_keyboard("click_delete"))
+    await call.answer("✅ تم الحذف بنجاح!", show_alert=True)
+    await call.message.edit_text("🗑 **اختر الزر المراد حذفه نهائياً:**", reply_markup=get_admin_elements_keyboard("click_delete"))
 
 @dp.callback_query(F.data == "change_channel")
 async def change_channel_cmd(call: types.CallbackQuery, state: FSMContext):
-    await call.message.answer(f"🔗 الرابط الحالي للقناة هو: {get_setting('channel_url')}\n\nأرسل الآن الرابط الجديد بالكامل:")
+    await call.message.answer(f"🔗 الرابط الحالي للقناة هو: {get_setting('channel_url')}\n\nأرسل الرابط الجديد:")
     await state.set_state(SystemStates.edit_channel_link)
 
 @dp.message(SystemStates.edit_channel_link)
 async def save_channel_link(message: types.Message, state: FSMContext):
     if not message.text.startswith("http"):
-        return await message.answer("❌ خطأ! يجب أن يبدأ الرابط بـ http أو https. أعد الإرسال:")
+        return await message.answer("❌ خطأ! يجب أن يبدأ بـ http أو https.")
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("UPDATE settings SET value=? WHERE key='channel_url'", (message.text,))
     conn.commit()
     conn.close()
-    await message.answer(f"✅ تم تحديث رابط القناة بنجاح إلى:\n{message.text}")
+    await message.answer(f"✅ تم تحديث رابط القناة.")
     await state.clear()
 
 @dp.callback_query(F.data == "change_support")
 async def change_support_cmd(call: types.CallbackQuery, state: FSMContext):
-    await call.message.answer(f"👨‍💻 رابط الدعم الحالي هو: {get_setting('support_url')}\n\nأرسل الآن رابط أو معرف الدعم الجديد:")
+    await call.message.answer(f"👨‍💻 رابط الدعم الحالي هو: {get_setting('support_url')}\n\nأرسل الرابط الجديد:")
     await state.set_state(SystemStates.edit_support_link)
 
 @dp.message(SystemStates.edit_support_link)
 async def save_support_link(message: types.Message, state: FSMContext):
     if not message.text.startswith("http"):
-        return await message.answer("❌ خطأ! يجب أن يبدأ الرابط بـ http أو https. أعد الإرسال:")
+        return await message.answer("❌ خطأ! يجب أن يبدأ بـ http أو https.")
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("UPDATE settings SET value=? WHERE key='support_url'", (message.text,))
     conn.commit()
     conn.close()
-    await message.answer(f"✅ تم تحديث رابط الدعم الفني بنجاح إلى:\n{message.text}")
+    await message.answer(f"✅ تم تحديث رابط الدعم.")
     await state.clear()
 
 @dp.callback_query(F.data == "adm_add_element")
@@ -389,26 +389,26 @@ async def build_step1(call: types.CallbackQuery, state: FSMContext):
     cursor.execute("SELECT id, name FROM elements WHERE type='folder'")
     folders = cursor.fetchall()
     conn.close()
-    kb = [[InlineKeyboardButton(text="🔝 في واجهة الشراء الأساسية", callback_data="setparent_0")]]
+    kb = [[InlineKeyboardButton(text="🔝 في الواجهة الأساسية", callback_data="setparent_0")]]
     for f in folders:
-        kb.append([InlineKeyboardButton(text=f"📁 داخل قسم: {f[1]}", callback_data=f"setparent_{f[0]}")])
-    await call.message.edit_text("📍 أين تريد وضع هذا الزر الجديد؟", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+        kb.append([InlineKeyboardButton(text=f"📁 داخل: {f[1]}", callback_data=f"setparent_{f[0]}")])
+    await call.message.edit_text("📍 أين تريد وضع الزر الجديد؟", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
 @dp.callback_query(F.data.startswith("setparent_"))
 async def build_step2(call: types.CallbackQuery, state: FSMContext):
     pid = int(call.data.split("_")[1])
     await state.update_data(parent_id=pid)
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📁 قسم فرعي جديد", callback_data="settype_folder"), InlineKeyboardButton(text="📝 نص أو منتج معروض", callback_data="settype_text")],
-        [InlineKeyboardButton(text="🔗 رابط ويب خارجي", callback_data="settype_link"), InlineKeyboardButton(text="📸 ميديا وصورة منتج", callback_data="settype_media")]
+        [InlineKeyboardButton(text="📁 قسم جديد", callback_data="settype_folder"), InlineKeyboardButton(text="📝 نص منتج", callback_data="settype_text")],
+        [InlineKeyboardButton(text="🔗 رابط ويب", callback_data="settype_link"), InlineKeyboardButton(text="📸 صورة منتج", callback_data="settype_media")]
     ])
-    await call.message.edit_text("⚙️ اختر نوع هذا الزر المخصص للتثبيت:", reply_markup=kb)
+    await call.message.edit_text("⚙️ اختر نوع الزر:", reply_markup=kb)
 
 @dp.callback_query(F.data.startswith("settype_"))
 async def build_step3(call: types.CallbackQuery, state: FSMContext):
     elem_type = call.data.split("_")[1]
     await state.update_data(type=elem_type)
-    await call.message.answer("🔤 أرسل الاسم النصي للزر:")
+    await call.message.answer("🔤 أرسل اسم الزر:")
     await state.set_state(SystemStates.wait_name)
 
 @dp.message(SystemStates.wait_name)
@@ -421,8 +421,19 @@ async def build_step4(message: types.Message, state: FSMContext):
         cursor.execute('INSERT INTO elements (parent_id, type, name, content) VALUES (?, ?, ?, ?)', (data['parent_id'], 'folder', data['name'], 'none'))
         conn.commit()
         conn.close()
-        await message.answer("✅ تم إنشاء القسم المجلد بنجاح!")
+        await message.answer("✅ تم إنشاء القسم بنجاح!")
         await state.clear()
     else:
-        await message.answer("📥 أرسل الآن المحتوى المطلوب ربطه بهذا الزر (نص، رابط، أو صورة):")
-        await state.set_state(System
+        await message.answer("📥 أرسل المحتوى المطلوب ربطه بالزر الآن:")
+        await state.set_state(SystemStates.wait_content)
+
+# --- 428: الحل الجذري والآمن 100% ---
+@dp.message(SystemStates.wait_content)
+async def build_step5(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    
+    # فحص المحتوى بشكل يدوي وآمن بدون استخدام الفلاتر المعقدة
+    if data['type'] == 'media':
+        if not message.photo:
+            return await message.answer("❌ خطأ: يرجى إرسال صورة فقط لهذا القسم:")
+       
