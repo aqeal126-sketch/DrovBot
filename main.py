@@ -21,7 +21,7 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
 # --- تأسيس النواة وقواعد البيانات الشاملة ---
-conn = sqlite3.connect('sovereign_store_v8.db', check_same_thread=False)
+conn = sqlite3.connect('sovereign_store_v9.db', check_same_thread=False)
 cursor = conn.cursor()
 
 cursor.execute('''CREATE TABLE IF NOT EXISTS users (
@@ -142,7 +142,7 @@ async def start_cmd(message: types.Message):
     
     if not await is_subscribed(user_id):
         return await message.answer(
-            f"❌ عذراً عزيزي، يجب عليك الاشتراك في قناة البوت الرسمية أولاً لتتمكن من استخدامه!\n\nإشترك هنا: {REQ_CHANNEL_URL}\nثم اضغط على زر التأكيد أدناه👇",
+            f"أهلاً بكم في -  Drov TG   👋\n\n❌ عذراً عزيزي، يجب عليك الاشتراك في قناة البوت الرسمية أولاً لتتمكن من استخدامه!\n\nإشترك هنا: {REQ_CHANNEL_URL}\nثم اضغط على زر التأكيد أدناه👇",
             reply_markup=get_join_keyboard()
         )
 
@@ -202,7 +202,7 @@ async def check_subscription(call: types.CallbackQuery):
     else:
         await call.answer("❌ أنت غير مشترك في القناة حالياً! اشترك أولاً ثم اضغط مجدداً.", show_alert=True)
 
-# --- جدار الحماية الرئيسي الشامل للمعالجة وضمان خلوه من الأخطاء البرمجية مالتنا ---
+# --- جدار الحماية الرئيسي الشامل لجميع ضغطات الأزرار (Callback Queries) ---
 @dp.callback_query()
 async def global_callback_guard(call: types.CallbackQuery, state: FSMContext):
     if call.data == "check_subscription":
@@ -346,7 +346,6 @@ async def global_callback_guard(call: types.CallbackQuery, state: FSMContext):
     elif data.startswith("editname_"):
         if call.from_user.id != SUPER_ADMIN: return
         item_id = int(data.split("_")[1])
-        # تم إصلاح الخطأ البرمجي للـ await هنا بالكامل وتجاوزه بنجاح
         await state.update_data(edit_item_id=item_id)
         await call.message.answer("✏️ أرسل الآن الاسم الجديد للزر المختار:")
         await state.set_state(SystemStates.wait_new_name)
@@ -370,7 +369,7 @@ async def global_callback_guard(call: types.CallbackQuery, state: FSMContext):
         folders = cursor.fetchall()
         kb = [[InlineKeyboardButton(text="🔝 في واجهة الشراء الأساسية", callback_data="setparent_0")]]
         for f in folders: kb.append([InlineKeyboardButton(text=f"📁 داخل قسم: {f[1]}", callback_data=f"setparent_{f[0]}")])
-        await call.message.edit_text("📍 أين تريد وضع هذا الزر الجديد ضمن شجرة المتجر؟", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+        await call.message.edit_text("📍 أين تريد وضع هذا الزر الجديد ضمن شجرة المتجر Reef؟", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
     elif data.startswith("setparent_"):
         if call.from_user.id != SUPER_ADMIN: return
@@ -393,4 +392,4 @@ async def global_callback_guard(call: types.CallbackQuery, state: FSMContext):
         cursor.execute('SELECT COUNT(*) FROM users'); u_count = cursor.fetchone()[0]
         cursor.execute('SELECT COUNT(*) FROM elements'); e_count = cursor.fetchone()[0]
         cursor.execute('SELECT COUNT(*) FROM purchases'); p_count = cursor.fetchone()[0]
-        stat_text = f"📊 **إحصائيات م
+        stat_text = f"📊 **إحصائيات متجرك السيادي:**\n\n👥 إجمالي المستخدمين 
