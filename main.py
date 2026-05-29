@@ -19,7 +19,7 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
 # --- تأسيس النواة وقواعد البيانات الشاملة ---
-conn = sqlite3.connect('sovereign_store_v4.db', check_same_thread=False)
+conn = sqlite3.connect('sovereign_store_v5.db', check_same_thread=False)
 cursor = conn.cursor()
 
 # جدول المستخدمين مع الرصيد والإحالات والهدية اليومية
@@ -55,7 +55,6 @@ class SystemStates(StatesGroup):
 
 # --- محرك القائمة الرئيسية المطابق للمخطط 100% ---
 def get_main_keyboard(user_id):
-    # تم ترتيب الأزرار وتزيينها بالإيموجي لتعطي انطباع الألوان الاحترافي
     kb = [
         [InlineKeyboardButton(text="🛒 الشراء وتصفح المتجر", callback_data="main_buy")],
         [InlineKeyboardButton(text="💰 شحن رصيد", callback_data="main_charge"), InlineKeyboardButton(text="📦 مشترياتي", callback_data="main_purchases")],
@@ -153,7 +152,7 @@ async def main_charge(call: types.CallbackQuery):
     cursor.execute('SELECT balance FROM users WHERE user_id=?', (user_id,))
     balance = cursor.fetchone()[0]
     
-    text = f"💰 **قسم شحن الرصيد والنقاط**\n\n"
+    text = f"💰 **<b>قسم شحن الرصيد والنقاط</b>**\n\n"
     text += f"💳 رصيدك الحالي: `{balance}` نقطة.\n\n"
     text += "يمكنك تجميع النقاط مجاناً عبر الهدية اليومية، أو التواصل معي مباشرة لشحن الرصيد عبر حسابي."
     
@@ -190,7 +189,7 @@ async def get_daily_gift(call: types.CallbackQuery):
         try: await call.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
         except: pass
 
-# 3. زر مشترياتي
+# 3. زر مشترياتي (تم إصلاح السطر 207 المكرر هنا بنجاح)
 @dp.callback_query(F.data == "main_purchases")
 async def main_purchases(call: types.CallbackQuery):
     user_id = call.from_user.id
@@ -204,7 +203,7 @@ async def main_purchases(call: types.CallbackQuery):
         for idx, item in enumerate(rows, start=1):
             text += f"{idx}. 🛍 `{item[0]}` - بتاريخ: {item[1]}\n"
             
-    kb = InlineKeyboardMarkup(inline_keyboard=[...], inline_keyboard=[[InlineKeyboardButton(text="🔙 رجوع", callback_data="back_to_main")]])
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 رجوع", callback_data="back_to_main")]])
     await call.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
 
 # 4. زر الإحالة
