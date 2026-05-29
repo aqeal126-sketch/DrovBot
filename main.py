@@ -14,14 +14,14 @@ SUPER_ADMIN = 8333784255  # معرف المالك المطلق (أنت)
 
 MY_ACCOUNT_URL = "https://t.me/xq_7d"   # حسابك الخاص بالدعم
 CHANNEL_URL = "https://t.me/drov70"        # قناة التفعيلات
-REQ_CHANNEL_ID = "@drov8"                  # معرف قناة الاشتراك الإجباري (يجب رفع البوت أدمن فيها)
+REQ_CHANNEL_ID = "@drov8"                  # معرف قناة الاشتراك الإجباري
 REQ_CHANNEL_URL = "https://t.me/drov8"     # رابط قناة الاشتراك الإجباري
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
 # --- تأسيس النواة وقواعد البيانات الشاملة ---
-conn = sqlite3.connect('sovereign_store_v7.db', check_same_thread=False)
+conn = sqlite3.connect('sovereign_store_v8.db', check_same_thread=False)
 cursor = conn.cursor()
 
 cursor.execute('''CREATE TABLE IF NOT EXISTS users (
@@ -51,19 +51,18 @@ class SystemStates(StatesGroup):
     wait_type = State()
     wait_content = State()
     wait_broadcast = State()
-    wait_new_name = State() # حالة تعديل اسم الزر
+    wait_new_name = State() 
 
 # --- دالة فحص الاشتراك الإجباري ---
 async def is_subscribed(user_id: int) -> bool:
     if user_id == SUPER_ADMIN:
-        return True  # المالك مستثنى دائماً
+        return True  
     try:
         member = await bot.get_chat_member(chat_id=REQ_CHANNEL_ID, user_id=user_id)
         if member.status in ['creator', 'administrator', 'member']:
             return True
         return False
     except Exception:
-        # في حال لم يتم رفع البوت أدمن في القناة بعد، سيمرر المستخدمين مؤقتاً لتجنب توقف البوت
         return True
 
 # --- كيبورد تنبيه الاشتراك الإجباري ---
@@ -73,7 +72,7 @@ def get_join_keyboard():
         [InlineKeyboardButton(text="🔄 تأكيد الاشتراك والتشغيل", callback_data="check_subscription")]
     ])
 
-# --- محرك القائمة الرئيسية المطابق للمخطط 100% ---
+# --- محرك القائمة الرئيسية ---
 def get_main_keyboard(user_id):
     kb = [
         [InlineKeyboardButton(text="🛒 الشراء وتصفح المتجر", callback_data="main_buy")],
@@ -86,7 +85,7 @@ def get_main_keyboard(user_id):
         
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- محرك توليد أزرار المنتجات الديناميكية داخل المتجر ---
+# --- محرك توليد أزرار المنتجات ---
 def get_store_keyboard(parent_id=0):
     cursor.execute('SELECT id, name, type, content FROM elements WHERE parent_id=?', (parent_id,))
     items = cursor.fetchall()
@@ -116,7 +115,7 @@ def get_store_keyboard(parent_id=0):
         
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- محرك توليد الأزرار للمالك لأغراض التعديل والحذف ---
+# --- محرك إدارة الأزرار للمالك ---
 def get_manage_keyboard(parent_id=0):
     cursor.execute('SELECT id, name, type FROM elements WHERE parent_id=?', (parent_id,))
     items = cursor.fetchall()
@@ -135,13 +134,12 @@ def get_manage_keyboard(parent_id=0):
         
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- أمر البداية مع رسالة الترحيب والاشتراك الإجباري ---
+# --- أمر البداية مع رسالة الترحيب المخصصة ---
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
     user_id = message.from_user.id
     username = f"@{message.from_user.username}" if message.from_user.username else "بلا معرف"
     
-    # تحقق من الاشتراك الإجباري أولاً غصباً عن المستخدم
     if not await is_subscribed(user_id):
         return await message.answer(
             f"❌ عذراً عزيزي، يجب عليك الاشتراك في قناة البوت الرسمية أولاً لتتمكن من استخدامه!\n\nإشترك هنا: {REQ_CHANNEL_URL}\nثم اضغط على زر التأكيد أدناه👇",
@@ -185,7 +183,7 @@ async def start_cmd(message: types.Message):
         
     await message.answer(welcome, reply_markup=get_main_keyboard(user_id), parse_mode="Markdown")
 
-# --- معالج التحقق من الاشتراك الإجباري بعد الضغط على الزر ---
+# --- معالج التحقق من الاشتراك الإجباري ---
 @dp.callback_query(F.data == "check_subscription")
 async def check_subscription(call: types.CallbackQuery):
     if await is_subscribed(call.from_user.id):
@@ -204,10 +202,9 @@ async def check_subscription(call: types.CallbackQuery):
     else:
         await call.answer("❌ أنت غير مشترك في القناة حالياً! اشترك أولاً ثم اضغط مجدداً.", show_alert=True)
 
-# --- جدار الحماية للاشتراك الإجباري لجميع ضغطات الأزرار الثابتة والديناميكية ---
+# --- جدار الحماية الرئيسي الشامل للمعالجة وضمان خلوه من الأخطاء البرمجية مالتنا ---
 @dp.callback_query()
-async def global_callback_guard(call: types.CallbackQuery, do_process=True):
-    # إذا كان الزر لفحص الاشتراك الإجباري نفسه، نتركه يمر
+async def global_callback_guard(call: types.CallbackQuery, state: FSMContext):
     if call.data == "check_subscription":
         return
         
@@ -221,7 +218,6 @@ async def global_callback_guard(call: types.CallbackQuery, do_process=True):
         except: pass
         return
 
-    # التوجيه الداخلي حسب وظيفة الزر بعد تخطي جدار الحماية بنجاح:
     data = call.data
     
     if data == "back_to_main":
@@ -318,7 +314,6 @@ async def global_callback_guard(call: types.CallbackQuery, do_process=True):
             conn.commit()
             await call.message.answer_photo(photo=content, caption=f"📸 {name}\n\n*(تمت إضافة الملف إلى سجل مشترياتك)*")
 
-    # --- معالجة لوحة التحكم والتحكم بالأزرار ---
     elif data == "super_admin_panel":
         if call.from_user.id != SUPER_ADMIN: return await call.answer("❌ لا تملك هذه الصلاحية السيادية!", show_alert=True)
         kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -351,7 +346,7 @@ async def global_callback_guard(call: types.CallbackQuery, do_process=True):
     elif data.startswith("editname_"):
         if call.from_user.id != SUPER_ADMIN: return
         item_id = int(data.split("_")[1])
-        await state = dp.current_state(chat=call.message.chat.id, user=call.from_user.id)
+        # تم إصلاح الخطأ البرمجي للـ await هنا بالكامل وتجاوزه بنجاح
         await state.update_data(edit_item_id=item_id)
         await call.message.answer("✏️ أرسل الآن الاسم الجديد للزر المختار:")
         await state.set_state(SystemStates.wait_new_name)
@@ -364,12 +359,11 @@ async def global_callback_guard(call: types.CallbackQuery, do_process=True):
         if item:
             pid = item[0]
             cursor.execute("DELETE FROM elements WHERE id=?", (item_id,))
-            cursor.execute("DELETE FROM elements WHERE parent_id=?", (item_id,)) # لو كان مجلد يحذف ما بداخله
+            cursor.execute("DELETE FROM elements WHERE parent_id=?", (item_id,)) 
             conn.commit()
             await call.answer(f"🗑 تم حذف زر [{item[1]}] بنجاح!", show_alert=True)
             await call.message.edit_text("⚙️ اختر الزر الذي تريد **تعديله** أو **حذفه** من الشجرة أدناه:", reply_markup=get_manage_keyboard(pid))
 
-    # --- بقية إعدادات البناء مالتنا ---
     elif data == "adm_add_element":
         if call.from_user.id != SUPER_ADMIN: return
         cursor.execute("SELECT id, name FROM elements WHERE type='folder'")
@@ -381,10 +375,22 @@ async def global_callback_guard(call: types.CallbackQuery, do_process=True):
     elif data.startswith("setparent_"):
         if call.from_user.id != SUPER_ADMIN: return
         pid = int(data.split("_")[1])
-        await state = dp.current_state(chat=call.message.chat.id, user=call.from_user.id)
         await state.update_data(parent_id=pid)
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="📁 قسم فرعي جديد", callback_data="settype_folder"), InlineKeyboardButton(text="📝 نص أو منتج معروض", callback_data="settype_text")],
             [InlineKeyboardButton(text="🔗 رابط ويب أو قناة", callback_data="settype_link"), InlineKeyboardButton(text="📸 ميديا وصورة منتج", callback_data="settype_media")]
         ])
-        await call.message.edit_text("⚙️ اختر نوع هذا الزر المخصص للتثبيت:"
+        await call.message.edit_text("⚙️ اختر نوع هذا الزر المخصص للتثبيت:", reply_markup=kb)
+
+    elif data.startswith("settype_"):
+        if call.from_user.id != SUPER_ADMIN: return
+        elem_type = data.split("_")[1]
+        await state.update_data(type=elem_type)
+        await call.message.answer("🔤 أرسل الاسم النصي للزر (الذي سيظهر للزبائن):")
+        await state.set_state(SystemStates.wait_name)
+
+    elif data == "adm_stats":
+        cursor.execute('SELECT COUNT(*) FROM users'); u_count = cursor.fetchone()[0]
+        cursor.execute('SELECT COUNT(*) FROM elements'); e_count = cursor.fetchone()[0]
+        cursor.execute('SELECT COUNT(*) FROM purchases'); p_count = cursor.fetchone()[0]
+        stat_text = f"📊 **إحصائيات م
