@@ -15,8 +15,8 @@ SUPER_ADMIN = 8333784255  # معرف المالك المطلق
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-# --- تأسيس النواة وقواعد البيانات الشاملة (تحديث النسخة v8 لمنع القفل) ---
-conn = sqlite3.connect('drov_system_v8.db', check_same_thread=False)
+# --- تأسيس النواة وقواعد البيانات الشاملة (نسخة مستقرة v9) ---
+conn = sqlite3.connect('drov_system_v9.db', check_same_thread=False)
 cursor = conn.cursor()
 
 # جدول المستخدمين
@@ -349,7 +349,7 @@ async def build_step1(call: types.CallbackQuery, state: FSMContext):
     kb = [[InlineKeyboardButton(text="🔝 في واجهة الشراء الأساسية", callback_data="setparent_0")]]
     for f in folders:
         kb.append([InlineKeyboardButton(text=f"📁 داخل قسم: {f[1]}", callback_data=f"setparent_{f[0]}")])
-    await call.message.edit_text("📍 أين تريد وضع هذا الزر الجديد Troy؟", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+    await call.message.edit_text("📍 أين تريد وضع هذا الزر الجديد؟", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
 @dp.callback_query(F.data.startswith("setparent_"))
 async def build_step2(call: types.CallbackQuery, state: FSMContext):
@@ -390,6 +390,7 @@ async def build_step5(message: types.Message, state: FSMContext):
     await message.answer("🎯 تم تثبيت الزر الجديد بنجاح مذهل!")
     await state.clear()
 
+# --- تم تفكيك وإصلاح دالة الإحصائيات هنا لمنع أي تداخل للأقواس نهائياً ---
 @dp.callback_query(F.data == "adm_stats")
 async def adm_stats(call: types.CallbackQuery):
     cursor.execute('SELECT COUNT(*) FROM users')
@@ -400,5 +401,6 @@ async def adm_stats(call: types.CallbackQuery):
     p_count = cursor.fetchone()[0]
     
     stat_text = f"📊 **إحصائيات متجرك السيادي:**\n\n👥 إجمالي المستخدمين: `{u_count}`\n📦 إجمالي الأزرار: `{e_count}`\n🛍 إجمالي المبيعات: `{p_count}`"
-    kb = [[InlineKeyboardButton(text="🔙 عودة للوحة التحكم", callback_data="super_admin_panel")]]
-    await call.message.edit_text(text=stat_text, reply_markup=Inline
+    
+    # بناء الكيبورد بشكل منفصل وصريح لتفادي خطأ الأقواس المعلقة
+    btn_back = InlineKeyboardButton(te
