@@ -1,74 +1,89 @@
 import os
+import sqlite3
 import asyncio
-from datetime import datetime
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
 
-# إعدادات البوت
+# --- الإعدادات ---
 API_TOKEN = os.getenv('BOT_TOKEN')
-CHANNEL_ID = "-1003077671245" 
-
+ADMIN_ID = 8333784255  # آيديك هنا
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-# دالة الأزرار الملاصقة (بدون قائمة سفلية)
-def get_inline_menu():
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🛒 شراء حساب", callback_data="buy_acc")],
-        [InlineKeyboardButton(text="📂 شراء جلسات", callback_data="buy_ses"), InlineKeyboardButton(text="📞 SMS - NUMBER", callback_data="sms")],
-        [InlineKeyboardButton(text="👤 الدعم الفني", url="https://t.me/xq_7d"), InlineKeyboardButton(text="🌐 الوكلاء", callback_data="agents")],
-        [InlineKeyboardButton(text="💳 شحن رصيد", callback_data="charge")],
-        [InlineKeyboardButton(text="✅ قناة التفعيلات", url="https://t.me/drov70"), InlineKeyboardButton(text="⚙️ مشترياتي", callback_data="my_orders")],
-        [InlineKeyboardButton(text="🔗 الإحالة", callback_data="referral")]
-    ])
+# --- قاعدة البيانات ---
+conn = sqlite3.connect('buttons.db')
+cursor = conn.cursor()
+cursor.execute('CREATE TABLE IF NOT EXISTS custom_buttons (id INTEGER PRIMARY KEY, name TEXT, action TEXT)')
+conn.commit()
 
-@dp.message()
-async def handle_messages(message: types.Message):
-    # أمر البدء - يحذف القائمة القديمة ويرسل الجديد
-    if message.text == '/start':
-        await message.answer("مرحباً بك في Drov TG", reply_markup=ReplyKeyboardRemove())
-        
-        user_id = message.from_user.id
-        text = (
-            f"أهلاً بك في - 𝗗𝗿𝗼𝘃 𝗧𝗚 👋\n\n"
-            f"🚀 أقوى سوق لبيع وشراء حسابات تيليجرام الجاهزة والجديدة 🌐.\n\n"
-            f"- ايديك: {user_id} 🆔.\n"
-            f"- 👍 رصيدك: 0.0$ 💵.\n\n"
-            f"👍 ابدأ باستخدام البوت الآن بالضغط على الأزرار بالأسفل ⬇️."
-        )
-        await message.answer(text, reply_markup=get_inline_menu())
+# --- الحالات (States) ---
+class AdminStates(StatesGroup):
+    waiting_for_name = State()
+    waiting_for_action = State()
 
-    # تجربة زر الإحالة
-    if message.text == "🔗 الإحالة": # إذا حاول الضغط عليها من مكان آخر
-        user_id = message.from_user.id
-        await message.answer(f"رابطك الخاص:\nhttps://t.me/dro7bot?start={user_id}")
-
-@dp.callback_query()
-async def callback_handler(call: types.CallbackQuery):
-    # نظام الإحالة عند الضغط على الزر
-    if call.data == "referral":
-        link = f"https://t.me/dro7bot?start={call.from_user.id}"
-        await call.message.answer(f"🤑 ⌯ إربح دولارات الآن مجاناً عبر مشاركة رابط البوت:\n\n{link}")
+# --- دالة الأزرار الديناميكية ---
+def get_dynamic_menu(is_admin):
+    cursor.execute('SELECT name, action FROM custom_buttons')
+    buttons = cursor.fetchall()
+    inline_kb = []
+    for name, action in buttons:
+        inline_kb.append([InlineKeyboardButton(text=name, callback_data=f"btn_{name}")])
     
-    # مثال محاكاة الشراء (عند الضغط على شراء حساب)
-    elif call.data == "buy_acc":
-        await call.message.answer("تمت عملية الشراء! جاري إرسال التقرير لقناة التفعيلات...")
-        report = (
-            f"- تم شراء حساب جديد من البوت\n\n"
-            f"- الدولة : العراق 🇮🇶\n"
-            f"- المنصة : تليجرام\n"
-            f"- الرقم : *****88\n"
-            f"- السعر : 1.5$\n"
-            f"- العميل : {call.from_user.id}\n"
-            f"- الحالة : تم التفعيل ✅\n"
-            f"- التاريخ : {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-        )
-        try:
-            await bot.send_message(CHANNEL_ID, report)
-        except:
-            await call.message.answer("خطأ: تأكد أن البوت مشرف في القناة!")
-            
+    if is_admin:
+        inline_kb.append([InlineKeyboardButton(text="⚙️ لوحة الإعدادات", callback_data="admin_panel")])
+    return InlineKeyboardMarkup(inline_keyboard=inline_kb)
+
+# --- أوامر البوت ---
+@dp.message(Command("start"))
+async def start(message: types.Message):
+    is_admin = (message.from_user.id == ADMIN_ID)
+    await message.answer("أهلاً بك في البوت، اختر من القائمة:", reply_markup=get_dynamic_menu(is_admin))
+
+# --- لوحة التحكم ---
+@dp.callback_query(F.data == "admin_panel")
+async def admin_panel(call: types.CallbackQuery):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="➕ إضافة زر جديد", callback_data="add_new_btn")],
+        [InlineKeyboardButton(text="🔙 رجوع", callback_data="back_main")]
+    ])
+    await call.message.edit_text("لوحة تحكم المدير:", reply_markup=kb)
+
+@dp.callback_query(F.data == "add_new_btn")
+async def start_add_btn(call: types.CallbackQuery, state: FSMContext):
+    await call.message.answer("أرسل اسم الزر الجديد:")
+    await state.set_state(AdminStates.waiting_for_name)
+
+@dp.message(AdminStates.waiting_for_name)
+async def get_btn_name(message: types.Message, state: FSMContext):
+    await state.update_data(name=message.text)
+    await message.answer("الآن أرسل المحتوى (رابط أو نص) للزر:")
+    await state.set_state(AdminStates.waiting_for_action)
+
+@dp.message(AdminStates.waiting_for_action)
+async def get_btn_action(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    cursor.execute('INSERT INTO custom_buttons (name, action) VALUES (?, ?)', (data['name'], message.text))
+    conn.commit()
+    await message.answer("تم إضافة الزر بنجاح!")
+    await state.clear()
+
+# --- معالجة الأزرار الديناميكية ---
+@dp.callback_query(F.data.startswith("btn_"))
+async def handle_dynamic_btns(call: types.CallbackQuery):
+    btn_name = call.data.split("_")[1]
+    cursor.execute('SELECT action FROM custom_buttons WHERE name=?', (btn_name,))
+    result = cursor.fetchone()
+    if result:
+        await call.message.answer(f"محتوى الزر {btn_name}:\n{result[0]}")
     await call.answer()
+
+@dp.callback_query(F.data == "back_main")
+async def back_main(call: types.CallbackQuery):
+    is_admin = (call.from_user.id == ADMIN_ID)
+    await call.message.edit_text("القائمة الرئيسية:", reply_markup=get_dynamic_menu(is_admin))
 
 async def main():
     await dp.start_polling(bot)
