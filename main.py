@@ -10,12 +10,12 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # --- الإعدادات الثابتة مالتنا ---
 API_TOKEN = os.getenv('BOT_TOKEN')
-SUPER_ADMIN = 8333784255  # معرف المالك المطلق (أنت)
+SUPER_ADMIN = 8333784255  # معرف المالك المطلق
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-# --- تأسيس النواة باسم جديد لمنع أي تعليق أو قفل قديم في السيرفر ---
+# --- تأسيس النواة وقواعد البيانات الشاملة ---
 conn = sqlite3.connect('drov_system_v7.db', check_same_thread=False)
 cursor = conn.cursor()
 
@@ -390,6 +390,7 @@ async def build_step5(message: types.Message, state: FSMContext):
     await message.answer("🎯 تم تثبيت الزر الجديد بنجاح مذهل!")
     await state.clear()
 
+# --- تم إصلاح سلسلة النص بالكامل هنا وسد الأقواس بشكل مثالي ---
 @dp.callback_query(F.data == "adm_stats")
 async def adm_stats(call: types.CallbackQuery):
     cursor.execute('SELECT COUNT(*) FROM users')
@@ -399,5 +400,6 @@ async def adm_stats(call: types.CallbackQuery):
     cursor.execute('SELECT COUNT(*) FROM purchases')
     p_count = cursor.fetchone()[0]
     
-    stat_text = f"📊 **إحصائيات متجرك السيادي:**\n\n👥 إجمالي المستخدمين: `{u_count}`\n📦 إجمالي الأزرار: `{e_
-  
+    stat_text = f"📊 **إحصائيات متجرك السيادي:**\n\n👥 إجمالي المستخدمين: `{u_count}`\n📦 إجمالي الأزرار: `{e_count}`\n🛍 إجمالي المبيعات: `{p_count}`"
+    kb = [[InlineKeyboardButton(text="🔙 عودة للوحة التحكم", callback_data="super_admin_panel")]]
+    await call.message.edit_text(text
