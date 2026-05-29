@@ -8,16 +8,16 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# --- الإعدادات الثابتة للبوت ---
+# --- الإعدادات الثابتة للبوت مالتنا ---
 API_TOKEN = os.getenv('BOT_TOKEN')
 SUPER_ADMIN = 8333784255  # معرف المالك المطلق
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-DB_NAME = 'drov_final.db'
+DB_NAME = 'drov_production_v10.db'
 
-# --- تأسيس قاعدة البيانات بشكل منفصل وسريع ---
+# --- تأسيس قاعدة البيانات بشكل مستقر وسريع جداً ---
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -48,7 +48,7 @@ def init_db():
 
 init_db()
 
-# --- جلب الإعدادات ديناميكياً بأمان ---
+# --- جلب الروابط ديناميكياً بدون أي تعليق ---
 def get_setting(key):
     try:
         conn = sqlite3.connect(DB_NAME)
@@ -62,7 +62,7 @@ def get_setting(key):
         if key == 'channel_url': return 'https://t.me/drov70'
         return ""
 
-# --- الحالات (FSM) الشاملة ---
+# --- الحالات (FSM) الشاملة للمتجر ---
 class SystemStates(StatesGroup):
     wait_name = State()
     wait_type = State()
@@ -73,7 +73,7 @@ class SystemStates(StatesGroup):
     edit_channel_link = State()
     edit_support_link = State()
 
-# --- محرك الكيبورد الرئيسي ---
+# --- محرك الكيبورد الرئيسي المطابق للمخطط ---
 def get_main_keyboard(user_id):
     kb = [
         [InlineKeyboardButton(text="🛒 الشراء وتصفح المتجر", callback_data="main_buy")],
@@ -86,7 +86,7 @@ def get_main_keyboard(user_id):
         
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- محرك المتجر الديناميكي ---
+# --- محرك المتجر وتوليد الأزرار الديناميكية ---
 def get_store_keyboard(parent_id=0):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -123,7 +123,7 @@ def get_store_keyboard(parent_id=0):
         
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- أمر التشغيل /start ---
+# --- أمر التشغيل الأساسي /start ---
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
     user_id = message.from_user.id
@@ -170,7 +170,7 @@ async def start_cmd(message: types.Message):
         
     await message.answer(welcome, reply_markup=get_main_keyboard(user_id), parse_mode="Markdown")
 
-# --- التنقل والعودة للقائمة الرئيسية ---
+# --- معالجة الضغط على الأزرار والتنقل العكسي ---
 @dp.callback_query(F.data == "back_to_main")
 async def back_to_main(call: types.CallbackQuery):
     user_id = call.from_user.id
@@ -287,7 +287,7 @@ async def navigate_system(call: types.CallbackQuery):
         else:
             await call.message.answer(f"📦 **{name}**\n\n{content}")
 
-# ================= ⚙️ لوحة الإعدادات الشاملة (التحكم الكامل) =================
+# ================= ⚙️ لوحة الإعدادات الشاملة والإدارة المطلقة =================
 
 @dp.callback_query(F.data == "super_admin_panel")
 async def super_admin_panel(call: types.CallbackQuery):
@@ -434,6 +434,4 @@ async def build_step4(message: types.Message, state: FSMContext):
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
         cursor.execute('INSERT INTO elements (parent_id, type, name, content) VALUES (?, ?, ?, ?)', (data['parent_id'], 'folder', data['name'], 'none'))
-        conn.commit()
-        conn.close()
-        await message.answer("✅ تم إنشاء
+ 
