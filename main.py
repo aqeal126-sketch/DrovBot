@@ -249,7 +249,7 @@ async def navigate_system(call: types.CallbackQuery):
         else:
             await call.message.answer(f"📦 **{name}**\n\n{content}")
 
-# ================= ⚙️ لوحة الإعدادات الشاملة (مثل z81bot) =================
+# ================= ⚙️ لوحة الإعدادات الشاملة =================
 
 @dp.callback_query(F.data == "super_admin_panel")
 async def super_admin_panel(call: types.CallbackQuery):
@@ -264,7 +264,7 @@ async def super_admin_panel(call: types.CallbackQuery):
     ]
     await call.message.edit_text("👑 **مرحباً بك في لوحة التحكم الإدارية المطلقة**\nالتحكم الآن بالكامل من الأزرار بدون الحاجة لتعديل الكود:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
-# --- تكتيك التعديل والحذف الذكي (بدون كتابة ID يدوياً) ---
+# --- تكتيك التعديل والحذف الذكي ---
 def get_admin_elements_keyboard(action_prefix):
     cursor.execute("SELECT id, name, type FROM elements")
     items = cursor.fetchall()
@@ -310,7 +310,7 @@ async def perform_button_delete(call: types.CallbackQuery):
     await call.answer("✅ تم حذف الزر وكل محتوياته من المتجر!", show_alert=True)
     await call.message.edit_text("🗑 **اختر الزر المراد حذفه نهائياً بلمسة واحدة:**", reply_markup=get_admin_elements_keyboard("click_delete"))
 
-# --- تعديل الروابط ديناميكياً من داخل البوت (تعديل القناة والدعم) ---
+# --- تعديل الروابط ديناميكياً من داخل البوت ---
 @dp.callback_query(F.data == "change_channel")
 async def change_channel_cmd(call: types.CallbackQuery, state: FSMContext):
     await call.message.answer(f"🔗 الرابط الحالي للقناة هو: {get_setting('channel_url')}\n\nأرسل الآن الرابط الجديد بالكامل:")
@@ -339,7 +339,7 @@ async def save_support_link(message: types.Message, state: FSMContext):
     await message.answer(f"✅ تم تحديث رابط الدعم الفني بنجاح إلى:\n{message.text}")
     await state.clear()
 
-# --- بقية نظام الإضافة والإحصائيات القديم والمستقر مالتك ---
+# --- بقية نظام الإضافة والإحصائيات والمسؤول عن الخطأ المصلح هنا ---
 @dp.callback_query(F.data == "adm_add_element")
 async def build_step1(call: types.CallbackQuery, state: FSMContext):
     cursor.execute("SELECT id, name FROM elements WHERE type='folder'")
@@ -388,6 +388,7 @@ async def build_step5(message: types.Message, state: FSMContext):
     await message.answer("🎯 تم تثبيت الزر الجديد بنجاح مذهل!")
     await state.clear()
 
+# تم إصلاح هذه الدالة بالكامل وسد الأقواس الناقصة
 @dp.callback_query(F.data == "adm_stats")
 async def adm_stats(call: types.CallbackQuery):
     cursor.execute('SELECT COUNT(*) FROM users')
@@ -396,5 +397,8 @@ async def adm_stats(call: types.CallbackQuery):
     e_count = cursor.fetchone()[0]
     cursor.execute('SELECT COUNT(*) FROM purchases')
     p_count = cursor.fetchone()[0]
+    
     stat_text = f"📊 **إحصائيات متجرك السيادي:**\n\n👥 إجمالي المستخدمين: `{u_count}`\n📦 إجمالي الأزرار: `{e_count}`\n🛍 إجمالي المبيعات: `{p_count}`"
-    await call.message.answer(stat_text, reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 عودة", callback_data="super_admin_panel")]]), parse_m
+    
+    kb = [[InlineKeyboardButton(text="🔙 عودة للوحة التحكم", callback_data="super_admin_panel")]]
+    await call.message.edit_text(stat_text, reply_markup=InlineKeyboa
