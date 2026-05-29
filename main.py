@@ -16,7 +16,7 @@ SUPER_ADMIN = 8333784255  # معرف المالك المطلق
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-DB_NAME = 'drov_production_v12.db'
+DB_NAME = 'drov_production_v13.db'
 
 # --- تأسيس قاعدة البيانات ---
 def init_db():
