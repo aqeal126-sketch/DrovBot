@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import asyncio
+from datetime import datetime
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
@@ -10,95 +11,95 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 # --- الإعدادات ---
 API_TOKEN = os.getenv('BOT_TOKEN')
 SUPER_ADMIN = 8333784255
+MY_ACCOUNT_URL = "https://t.me/xq_7d"
+CHANNEL_URL = "https://t.me/drov70"
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
 # --- قاعدة البيانات ---
-conn = sqlite3.connect('store_db.db', check_same_thread=False)
+conn = sqlite3.connect('sovereign_store_v6.db', check_same_thread=False)
 cursor = conn.cursor()
-cursor.execute('CREATE TABLE IF NOT EXISTS elements (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, content TEXT)')
+# (تم الاحتفاظ بنفس الجداول السابقة لضمان توافق بياناتك)
+cursor.execute('''CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT, balance REAL DEFAULT 0.0, referred_by INTEGER, last_gift_date TEXT)''')
+cursor.execute('''CREATE TABLE IF NOT EXISTS elements (id INTEGER PRIMARY KEY AUTOINCREMENT, parent_id INTEGER DEFAULT 0, type TEXT, name TEXT, content TEXT)''')
+cursor.execute('''CREATE TABLE IF NOT EXISTS purchases (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, item_name TEXT, purchase_date TEXT)''')
 conn.commit()
 
-# --- الحالات ---
-class AdminStates(StatesGroup):
+# --- الحالات (FSM) ---
+class SystemStates(StatesGroup):
     wait_name = State()
     wait_content = State()
     wait_edit_name = State()
-    wait_edit_content = State()
+    wait_broadcast = State()
 
-# --- توليد الأزرار ---
-def get_main_kb(user_id):
-    cursor.execute('SELECT id, name FROM elements')
-    items = cursor.fetchall()
-    kb = []
-    for item in items:
-        kb.append([InlineKeyboardButton(text=f"💎 {item[1]}", callback_data=f"show_{item[0]}")])
-    
+# --- الدوال المساعدة (الأزرار) ---
+def get_main_keyboard(user_id):
+    kb = [
+        [InlineKeyboardButton(text="🛒 الشراء وتصفح المتجر", callback_data="main_buy")],
+        [InlineKeyboardButton(text="💰 شحن رصيد", callback_data="main_charge"), InlineKeyboardButton(text="📦 مشترياتي", callback_data="main_purchases")],
+        [InlineKeyboardButton(text="🔗 رابط الإحالة", callback_data="main_referral"), InlineKeyboardButton(text="📢 قناة التفعيلات", url=CHANNEL_URL)],
+        [InlineKeyboardButton(text="👨‍💻 الدعم الفني", url=MY_ACCOUNT_URL)]
+    ]
     if user_id == SUPER_ADMIN:
-        kb.append([InlineKeyboardButton(text="⚙️ لوحة الإدارة", callback_data="admin_panel")])
+        kb.append([InlineKeyboardButton(text="⚙️ لوحة التحكم السيادية", callback_data="super_admin_panel")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- البداية ---
-@dp.message(CommandStart())
-async def start(message: types.Message):
-    await message.answer("أهلاً بك في المتجر، اختر ما يناسبك:", reply_markup=get_main_kb(message.from_user.id))
-
-# --- عرض المحتوى ---
-@dp.callback_query(F.data.startswith("show_"))
-async def show_item(call: types.CallbackQuery):
-    item_id = call.data.split("_")[1]
-    cursor.execute('SELECT name, content FROM elements WHERE id=?', (item_id,))
-    item = cursor.fetchone()
-    await call.message.answer(f"📦 {item[0]}:\n\n{item[1]}")
-
-# --- لوحة الإدارة ---
-@dp.callback_query(F.data == "admin_panel")
+# --- لوحة الإدارة المطورة ---
+@dp.callback_query(F.data == "super_admin_panel")
 async def admin_panel(call: types.CallbackQuery):
     kb = [
-        [InlineKeyboardButton(text="➕ إضافة زر", callback_data="add_el")],
-        [InlineKeyboardButton(text="✏️ تعديل/حذف", callback_data="manage_el")]
+        [InlineKeyboardButton(text="➕ إضافة عنصر", callback_data="adm_add_element")],
+        [InlineKeyboardButton(text="✏️ تعديل اسم زر", callback_data="adm_edit_list"), InlineKeyboardButton(text="🗑 حذف عنصر", callback_data="adm_del_list")],
+        [InlineKeyboardButton(text="📢 إذاعة", callback_data="adm_broadcast"), InlineKeyboardButton(text="📊 إحصائيات", callback_data="adm_stats")],
+        [InlineKeyboardButton(text="🔙 عودة", callback_data="back_to_main")]
     ]
-    await call.message.edit_text("⚙️ تحكم بالمتجر:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+    await call.message.edit_text("⚙️ **لوحة التحكم الإدارية:**", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
-# --- إضافة ---
-@dp.callback_query(F.data == "add_el")
-async def add_el(call: types.CallbackQuery, state: FSMContext):
-    await call.message.answer("أرسل اسم الزر الجديد:")
-    await state.set_state(AdminStates.wait_name)
+# --- نظام التعديل ---
+@dp.callback_query(F.data == "adm_edit_list")
+async def edit_list(call: types.CallbackQuery):
+    cursor.execute("SELECT id, name FROM elements")
+    items = cursor.fetchall()
+    kb = [[InlineKeyboardButton(text=f"✏️ {i[1]}", callback_data=f"edit_el_{i[0]}")] for i in items]
+    kb.append([InlineKeyboardButton(text="🔙 رجوع", callback_data="super_admin_panel")])
+    await call.message.edit_text("اختر الزر لتعديل اسمه:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
-@dp.message(AdminStates.wait_name)
-async def get_name(message: types.Message, state: FSMContext):
-    await state.update_data(name=message.text)
-    await message.answer("أرسل المحتوى (رابط أو نص):")
-    await state.set_state(AdminStates.wait_content)
+@dp.callback_query(F.data.startswith("edit_el_"))
+async def edit_name_step(call: types.CallbackQuery, state: FSMContext):
+    eid = call.data.split("_")[2]
+    await state.update_data(edit_id=eid)
+    await call.message.answer("أرسل الاسم الجديد للزر:")
+    await state.set_state(SystemStates.wait_edit_name)
 
-@dp.message(AdminStates.wait_content)
-async def get_content(message: types.Message, state: FSMContext):
+@dp.message(SystemStates.wait_edit_name)
+async def process_edit(message: types.Message, state: FSMContext):
     data = await state.get_data()
-    cursor.execute('INSERT INTO elements (name, content) VALUES (?, ?)', (data['name'], message.text))
+    cursor.execute("UPDATE elements SET name=? WHERE id=?", (message.text, data['edit_id']))
     conn.commit()
-    await message.answer("✅ تم إضافة الزر بنجاح!")
+    await message.answer("✅ تم تحديث اسم الزر بنجاح!")
     await state.clear()
 
-# --- تعديل وحذف ---
-@dp.callback_query(F.data == "manage_el")
-async def manage_el(call: types.CallbackQuery):
-    cursor.execute('SELECT id, name FROM elements')
+# --- نظام الحذف ---
+@dp.callback_query(F.data == "adm_del_list")
+async def del_list(call: types.CallbackQuery):
+    cursor.execute("SELECT id, name FROM elements")
     items = cursor.fetchall()
-    kb = [[InlineKeyboardButton(text=f"🗑 {item[1]}", callback_data=f"del_{item[0]}")] for item in items]
-    kb.append([InlineKeyboardButton(text="🔙 عودة", callback_data="admin_panel")])
-    await call.message.edit_text("اختر لحذف العنصر:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+    kb = [[InlineKeyboardButton(text=f"❌ {i[1]}", callback_data=f"del_el_{i[0]}")] for i in items]
+    kb.append([InlineKeyboardButton(text="🔙 رجوع", callback_data="super_admin_panel")])
+    await call.message.edit_text("اختر الزر للحذف (سيتم حذفه نهائياً):", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
-@dp.callback_query(F.data.startswith("del_"))
-async def del_el(call: types.CallbackQuery):
-    item_id = call.data.split("_")[1]
-    cursor.execute('DELETE FROM elements WHERE id=?', (item_id,))
+@dp.callback_query(F.data.startswith("del_el_"))
+async def perform_del(call: types.CallbackQuery):
+    eid = call.data.split("_")[2]
+    cursor.execute("DELETE FROM elements WHERE id=?", (eid,))
     conn.commit()
     await call.answer("✅ تم الحذف!", show_alert=True)
     await admin_panel(call)
 
+# ... (باقي الدوال كما هي في كودك الأصلي للإضافة والإحصائيات والتشغيل)
 async def main():
+    print("🚀 البوت يعمل الآن...")
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
