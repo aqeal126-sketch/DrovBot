@@ -7,195 +7,113 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# --- الإعدادات الثابتة ---
+# --- الإعدادات الأساسية ---
 API_TOKEN = os.getenv('BOT_TOKEN')
 ADMIN_ID = 8333784255 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-# --- قاعدة البيانات الديناميكية الشاملة ---
-conn = sqlite3.connect('ultimate_store.db', check_same_thread=False)
+# --- بناء النواة (قاعدة البيانات) ---
+conn = sqlite3.connect('pro_god_mode.db', check_same_thread=False)
 cursor = conn.cursor()
-# نوع المحتوى (folder, text, link, media)
-cursor.execute('''CREATE TABLE IF NOT EXISTS elements 
-                  (id INTEGER PRIMARY KEY AUTOINCREMENT, parent_id INTEGER, type TEXT, name TEXT, content TEXT)''')
-cursor.execute('''CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+
+# جداول النظام الشامل
+cursor.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT, is_blocked BOOLEAN DEFAULT 0)')
+cursor.execute('CREATE TABLE IF NOT EXISTS store (id INTEGER PRIMARY KEY AUTOINCREMENT, parent_id INTEGER, type TEXT, name TEXT, content TEXT)')
+cursor.execute('CREATE TABLE IF NOT EXISTS pages (slug TEXT PRIMARY KEY, title TEXT, content TEXT)')
+cursor.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)')
+
+# إعداد الإعدادات الافتراضية
+cursor.execute('INSERT OR IGNORE INTO settings (key, value) VALUES ("captcha", "off"), ("spam_filter", "on"), ("stats_enabled", "on")')
 conn.commit()
 
-# --- FSM (حالات البناء الديناميكي) ---
-class Builder(StatesGroup):
-    wait_name = State()
-    wait_type = State()
-    wait_content = State()
-    wait_broadcast = State()
+class AdminStates(StatesGroup):
+    waiting_input = State()
+    broadcast_msg = State()
 
-# --- المحرك الديناميكي لجلب القوائم ---
-def get_dynamic_kb(parent_id=0):
-    cursor.execute('SELECT id, name, type, content FROM elements WHERE parent_id=?', (parent_id,))
+# --- محرك الأزرار الشجرية ---
+def get_main_keyboard():
+    cursor.execute('SELECT id, name FROM store WHERE parent_id=0')
     items = cursor.fetchall()
-    
     kb = []
-    row = []
-    for item in items:
-        item_id, name, item_type, content = item
-        if item_type == 'link':
-            row.append(InlineKeyboardButton(text=name, url=content), style="primary")
-        else:
-            row.append(InlineKeyboardButton(text=name, callback_data=f"go_{item_id}"), style="danger")
-        
-        if len(row) == 2:
-            kb.append(row)
-            row = []
-    if row: kb.append(row)
+    for i in range(0, len(items), 2):
+        row = [InlineKeyboardButton(text=items[i][1], callback_data=f"go_{items[i][0]}")]
+        if i+1 < len(items): row.append(InlineKeyboardButton(text=items[i+1][1], callback_data=f"go_{items[i+1][0]}"))
+        kb.append(row)
     
-    if parent_id != 0:
-        cursor.execute('SELECT parent_id FROM elements WHERE id=?', (parent_id,))
-        grand_parent = cursor.fetchone()
-        gp_id = grand_parent[0] if grand_parent else 0
-        kb.append([InlineKeyboardButton(text="🔙 رجوع", callback_data=f"go_{gp_id}")], style="danger")
-    else:
-        # زر لوحة التحكم يظهر دائماً في القائمة الرئيسية للجميع غصباً عن البوت
-        kb.append([InlineKeyboardButton(text="⚙️ لوحة التحكم", callback_data="admin_panel")], style="success")
-        
+    # زر لوحة التحكم يظهر للجميع (الوصول محمي برمجياً)
+    kb.append([InlineKeyboardButton(text="⚙️ لوحة التحكم", callback_data="admin_main")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- البداية ---
+# --- أوامر البداية ---
 @dp.message(Command("start"))
-async def start_cmd(message: types.Message):
-    cursor.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (message.from_user.id,))
+async def start(message: types.Message):
+    cursor.execute('INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)', (message.from_user.id, f"@{message.from_user.username}"))
     conn.commit()
-    await message.answer("🔥 أهلاً بك في متجرنا الرقمي المتطور:\nاختر ما تريده من الأزرار أدناه:", reply_markup=get_dynamic_kb(0))
+    await message.answer("🔥 أهلاً بك في البوت الأقوى على الإطلاق!\nاستخدم القائمة أدناه للتنقل:", reply_markup=get_main_keyboard())
 
-# --- معالج التنقل الديناميكي (قلب البوت) ---
-@dp.callback_query(F.data.startswith("go_"))
-async def navigate_system(call: types.CallbackQuery):
-    target_id = int(call.data.split("_")[1])
-    
-    if target_id == 0:
-        await call.message.edit_text("القائمة الرئيسية:", reply_markup=get_dynamic_kb(0))
-        return
-
-    cursor.execute('SELECT type, name, content FROM elements WHERE id=?', (target_id,))
-    item = cursor.fetchone()
-    if not item: return await call.answer("غير متوفر حالياً!")
-
-    item_type, name, content = item
-    
-    if item_type == 'folder':
-        await call.message.edit_text(f"📂 قسم: {name}", reply_markup=get_dynamic_kb(target_id))
-    elif item_type == 'text':
-        await call.answer()
-        await call.message.answer(f"📝 **{name}**\n\n{content}")
-    elif item_type == 'media':
-        await call.answer()
-        await call.message.answer_photo(photo=content, caption=name)
-
-# --- جدار حماية الإدارة لحماية لوحة التحكم ---
-@dp.callback_query(F.data == "admin_panel")
-async def admin_panel(call: types.CallbackQuery):
+# --- لوحة التحكم المركزية (The Command Center) ---
+@dp.callback_query(F.data == "admin_main")
+async def admin_main(call: types.CallbackQuery):
     if call.from_user.id != ADMIN_ID:
-        return await call.answer("❌ عذراً عزيزي، هذه اللوحة مخصصة لمالك البوت فقط!", show_alert=True)
-        
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➕ بناء عنصر جديد", callback_data="build_select_parent")],, style="danger"
-        [InlineKeyboardButton(text="📢 إذاعة", callback_data="admin_cast"), InlineKeyboardButton(text="📊 إحصائيات", callback_data="admin_stats")],, style="primary"
-        [InlineKeyboardButton(text="🔙 إغلاق", callback_data="go_0")], style="success"
-    ])
-    await call.message.edit_text("⚙️ **وضع المُنشئ المتقدم (God Mode)**:\nيمكنك التحكم بالبوت وإضافة أي شيء من هنا مباشرة:", reply_markup=kb)
-
-# --- نظام البناء الديناميكي من داخل البوت ---
-@dp.callback_query(F.data == "build_select_parent")
-async def build_step1(call: types.CallbackQuery, state: FSMContext):
-    cursor.execute("SELECT id, name FROM elements WHERE type='folder'")
-    folders = cursor.fetchall()
-    
-    kb = [[InlineKeyboardButton(text="🔝 في القائمة الرئيسية", callback_data="build_p_0")]], style="primary"
-    for f in folders:
-        kb.append([InlineKeyboardButton(text=f"📁 داخل: {f[1]}", callback_data=f"build_p_{f[0]}")], style="success")
-        
-    await call.message.edit_text("📍 أين تريد إضافة العنصر الجديد؟", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
-
-@dp.callback_query(F.data.startswith("build_p_"))
-async def build_step2(call: types.CallbackQuery, state: FSMContext):
-    pid = int(call.data.split("_")[2])
-    await state.update_data(parent_id=pid)
+        return await call.answer("❌ عذراً، هذه اللوحة للمطور فقط!", show_alert=True)
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📁 قسم فرعي", callback_data="btype_folder"), InlineKeyboardButton(text="📝 نص/منتج", callback_data="btype_text")],, style="success"
-        [InlineKeyboardButton(text="🔗 رابط خارجي", callback_data="btype_link"), InlineKeyboardButton(text="📸 صورة/ملف", callback_data="btype_media")], style="primary"
+        [InlineKeyboardButton(text="👥 المستخدمون", callback_data="adm_users"), InlineKeyboardButton(text="🛒 المنتجات", callback_data="adm_products")],
+        [InlineKeyboardButton(text="🎨 إدارة الأزرار", callback_data="adm_btns"), InlineKeyboardButton(text="📑 الصفحات", callback_data="adm_pages")],
+        [InlineKeyboardButton(text="📢 الإعلانات", callback_data="adm_cast"), InlineKeyboardButton(text="🛡 الحماية", callback_data="adm_sec")],
+        [InlineKeyboardButton(text="⚙️ الإعدادات المتقدمة", callback_data="adm_adv")],
+        [InlineKeyboardButton(text="🔙 إغلاق", callback_data="close")]
     ])
-    await call.message.edit_text("⚙️ ما هو نوع العنصر الذي تريد إنشاءه؟", reply_markup=kb)
+    await call.message.edit_text("⚙️ **لوحة التحكم المركزية**\nاختر القسم الذي تريد إدارته:", reply_markup=kb, parse_mode="Markdown")
 
-@dp.callback_query(F.data.startswith("btype_"))
-async def build_step3(call: types.CallbackQuery, state: FSMContext):
-    elem_type = call.data.split("_")[1]
-    await state.update_data(type=elem_type)
-    await call.message.answer("🔤 أرسل اسم الزر (ما سيراه المستخدم في القائمة):")
-    await state.set_state(Builder.wait_name)
+# --- 1. قسم المستخدمين ---
+@dp.callback_query(F.data == "adm_users")
+async def adm_users(call: types.CallbackQuery):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔍 بحث عن مستخدم", callback_data="u_search"), InlineKeyboardButton(text="🚫 الحظر", callback_data="u_ban")],
+        [InlineKeyboardButton(text="✅ فك الحظر", callback_data="u_unban"), InlineKeyboardButton(text="📋 القائمة", callback_data="u_list")],
+        [InlineKeyboardButton(text="🔙 عودة", callback_data="admin_main")]
+    ])
+    await call.message.edit_text("👥 **إدارة المستخدمين**:", reply_markup=kb)
 
-@dp.message(Builder.wait_name)
-async def build_step4(message: types.Message, state: FSMContext):
-    await state.update_data(name=message.text)
-    data = await state.get_data()
-    
-    if data['type'] == 'folder':
-        cursor.execute('INSERT INTO elements (parent_id, type, name, content) VALUES (?, ?, ?, ?)', (data['parent_id'], 'folder', data['name'], 'none'))
-        conn.commit()
-        await message.answer("✅ تم إنشاء القسم المجلد بنجاح!")
-        await state.clear()
-    else:
-        msg = "📥 أرسل محتوى الزر:\n- للنص: اكتب تفاصيل المنتج أو الحسابات\n- للرابط: أرسل الرابط يبدأ بـ http\n- للصورة: أرسل الصورة هنا مباشرة"
-        await message.answer(msg)
-        await state.set_state(Builder.wait_content)
+# --- 2. قسم المنتجات والأقسام ---
+@dp.callback_query(F.data == "adm_products")
+async def adm_products(call: types.CallbackQuery):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📂 الأقسام (ألعاب، بوتات...)", callback_data="p_cats")],
+        [InlineKeyboardButton(text="➕ إضافة قسم", callback_data="p_add_cat"), InlineKeyboardButton(text="📦 إدارة المنتجات", callback_data="p_manage")],
+        [InlineKeyboardButton(text="🔙 عودة", callback_data="admin_main")]
+    ])
+    await call.message.edit_text("🛒 **إدارة المتجر والمنتجات**:", reply_markup=kb)
 
-@dp.message(Builder.wait_content, F.any)
-async def build_step5(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    content = ""
-    
-    if data['type'] == 'media' and message.photo:
-        content = message.photo[-1].file_id # جلب معرف الصورة تلقائياً من سحابة تليجرام
-    else:
-        content = message.text
-        
-    cursor.execute('INSERT INTO elements (parent_id, type, name, content) VALUES (?, ?, ?, ?)', (data['parent_id'], data['type'], data['name'], content))
-    conn.commit()
-    await message.answer("🎯 تم دمج وتثبيت العنصر في نظام المتجر بنجاح!")
-    await state.clear()
+# --- 3. قسم الإعلانات ---
+@dp.callback_query(F.data == "adm_cast")
+async def adm_cast(call: types.CallbackQuery):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📤 إذاعة للجميع", callback_data="c_all"), InlineKeyboardButton(text="🎯 إذاعة لفئة", callback_data="c_seg")],
+        [InlineKeyboardButton(text="📸 إذاعة صورة", callback_data="c_img"), InlineKeyboardButton(text="🎥 إذاعة فيديو", callback_data="c_vid")],
+        [InlineKeyboardButton(text="🔙 عودة", callback_data="admin_main")]
+    ])
+    await call.message.edit_text("📢 **محرك الإعلانات والإذاعة**:", reply_markup=kb)
 
-# --- ميزة الإحصائيات للإدارة ---
-@dp.callback_query(F.data == "admin_stats")
-async def admin_stats(call: types.CallbackQuery):
-    cursor.execute('SELECT COUNT(*) FROM users')
-    total_users = cursor.fetchone()[0]
-    cursor.execute('SELECT COUNT(*) FROM elements')
-    total_elements = cursor.fetchone()[0]
-    
-    await call.answer(f"📊 إحصائيات المتجر:\n👥 المشتركين: {total_users}\n📦 العناصر والأزرار: {total_elements}", show_alert=True)
+# --- 4. قسم الإعدادات المتقدمة ---
+@dp.callback_query(F.data == "adm_adv")
+async def adm_adv(call: types.CallbackQuery):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔄 إعادة تشغيل", callback_data="adv_restart"), InlineKeyboardButton(text="🧹 تنظيف السجلات", callback_data="adv_clear")],
+        [InlineKeyboardButton(text="📤 نسخة احتياطية", callback_data="adv_back"), InlineKeyboardButton(text="📊 الإحصائيات", callback_data="adv_stats")],
+        [InlineKeyboardButton(text="🔙 عودة", callback_data="admin_main")]
+    ])
+    await call.message.edit_text("⚙️ **الإعدادات المتقدمة للنظام**:", reply_markup=kb)
 
-# --- نظام الإذاعة النصية للجميع ---
-@dp.callback_query(F.data == "admin_cast")
-async def admin_cast(call: types.CallbackQuery, state: FSMContext):
-    await call.message.answer("📝 أرسل نص الإعلان/الإذاعة الذي تريد توجيهه للجميع:")
-    await state.set_state(Builder.wait_broadcast)
-
-@dp.message(Builder.wait_broadcast)
-async def execute_broadcast(message: types.Message, state: FSMContext):
-    await message.answer("🔄 جاري البث والنشر للمستخدمين...")
-    cursor.execute('SELECT user_id FROM users')
-    all_users = cursor.fetchall()
-    
-    success = 0
-    for user in all_users:
-        try:
-            await bot.send_message(chat_id=user[0], text=message.text)
-            success += 1
-        except: continue
-        
-    await message.answer(f"✅ تمت الإذاعة بنجاح لـ {success} مستخدم.")
-    await state.clear()
+# --- نظام التنقل والعودة ---
+@dp.callback_query(F.data == "close")
+async def close(call: types.CallbackQuery):
+    await call.message.edit_text("تم إغلاق اللوحة الإدارية.", reply_markup=get_main_keyboard())
 
 async def main():
+    print("🚀 THE ULTIMATE BOT IS LIVE...")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
