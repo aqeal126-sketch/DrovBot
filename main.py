@@ -9,22 +9,21 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # --- الإعدادات ---
 API_TOKEN = os.getenv('BOT_TOKEN')
-ADMIN_ID = 8333784255 
+ADMIN_ID = 8333784255  # الآيدي الخاص بك
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-# --- قاعدة البيانات (تخزين الأزرار) ---
+# --- قاعدة البيانات ---
 conn = sqlite3.connect('bot_data.db', check_same_thread=False)
 cursor = conn.cursor()
-# parent_id = 0 يعني زر رئيسي، أي رقم آخر يعني تابع لزر معين
 cursor.execute('''CREATE TABLE IF NOT EXISTS buttons 
                   (id INTEGER PRIMARY KEY, name TEXT, content TEXT, parent_id INTEGER)''')
 conn.commit()
 
+# --- الحالات ---
 class AdminStates(StatesGroup):
     waiting_for_name = State()
     waiting_for_content = State()
-    waiting_for_parent = State()
 
 # --- دالة جلب الأزرار ---
 def get_keyboard(parent_id=0, is_admin=False):
@@ -36,43 +35,51 @@ def get_keyboard(parent_id=0, is_admin=False):
     
     if is_admin:
         keyboard.append([InlineKeyboardButton(text="➕ إضافة زر هنا", callback_data=f"add_{parent_id}")])
-        if parent_id != 0:
-            keyboard.append([InlineKeyboardButton(text="🔙 عودة", callback_data="back_0")])
-    elif parent_id != 0:
-        keyboard.append([InlineKeyboardButton(text="🔙 عودة", callback_data="back_0")])
+    
+    if parent_id != 0:
+        keyboard.append([InlineKeyboardButton(text="🔙 عودة للقائمة الرئيسية", callback_data="back_0")])
         
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-# --- البداية ---
+# --- دالة البداية المحدثة ---
 @dp.message(Command("start"))
 async def start(message: types.Message):
-    await message.answer("أهلاً بك في المتجر:", reply_markup=get_keyboard(0, message.from_user.id == ADMIN_ID))
+    # طباعة الآيدي في الـ Logs للتحقق
+    print(f"DEBUG: User ID attempting to start: {message.from_user.id}")
 
-# --- التنقل بين الأزرار ---
+    is_admin = (message.from_user.id == ADMIN_ID)
+    await message.answer("أهلاً بك، اختر من القائمة:", reply_markup=get_keyboard(0, is_admin))
+
+# --- التنقل ---
 @dp.callback_query(F.data.startswith("btn_"))
 async def navigate(call: types.CallbackQuery):
     btn_id = int(call.data.split("_")[1])
     cursor.execute('SELECT content FROM buttons WHERE id=?', (btn_id,))
     content = cursor.fetchone()[0]
     
-    # إذا كان المحتوى يبدأ بـ "folder", فهو زر يحتوي أزراراً أخرى
     if content == "folder":
-        await call.message.edit_text("اختر قسماً:", reply_markup=get_keyboard(btn_id, call.from_user.id == ADMIN_ID))
+        is_admin = (call.from_user.id == ADMIN_ID)
+        await call.message.edit_text("اختر قسماً:", reply_markup=get_keyboard(btn_id, is_admin))
     else:
         await call.answer(content, show_alert=True)
 
-# --- الإضافة ---
+@dp.callback_query(F.data == "back_0")
+async def back_main(call: types.CallbackQuery):
+    is_admin = (call.from_user.id == ADMIN_ID)
+    await call.message.edit_text("القائمة الرئيسية:", reply_markup=get_keyboard(0, is_admin))
+
+# --- الإضافة (للمدير فقط) ---
 @dp.callback_query(F.data.startswith("add_"))
 async def add_btn_start(call: types.CallbackQuery, state: FSMContext):
     parent_id = int(call.data.split("_")[1])
     await state.update_data(parent_id=parent_id)
-    await call.message.answer("أدخل اسم الزر الجديد:")
+    await call.message.answer("أرسل اسم الزر الجديد:")
     await state.set_state(AdminStates.waiting_for_name)
 
 @dp.message(AdminStates.waiting_for_name)
 async def get_name(message: types.Message, state: FSMContext):
     await state.update_data(name=message.text)
-    await message.answer("أرسل محتوى الزر (اكتب 'folder' إذا كنت تريد جعله مجلداً لأزرار أخرى):")
+    await message.answer("أرسل محتوى الزر (اكتب 'folder' إذا كان مجلداً للأزرار، أو أي نص/رابط):")
     await state.set_state(AdminStates.waiting_for_content)
 
 @dp.message(AdminStates.waiting_for_content)
@@ -81,7 +88,7 @@ async def save_btn(message: types.Message, state: FSMContext):
     cursor.execute('INSERT INTO buttons (name, content, parent_id) VALUES (?, ?, ?)', 
                    (data['name'], message.text, data['parent_id']))
     conn.commit()
-    await message.answer("تمت الإضافة بنجاح!")
+    await message.answer("✅ تم إضافة الزر بنجاح!")
     await state.clear()
 
 async def main():
@@ -89,4 +96,4 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
-    
+  
