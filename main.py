@@ -15,8 +15,8 @@ SUPER_ADMIN = 8333784255  # معرف المالك المطلق (أنت)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-# --- تأسيس النواة وقواعد البيانات الشاملة ---
-conn = sqlite3.connect('sovereign_store_v6.db', check_same_thread=False)
+# --- تأسيس النواة باسم جديد لمنع أي تعليق أو قفل قديم في السيرفر ---
+conn = sqlite3.connect('drov_system_v7.db', check_same_thread=False)
 cursor = conn.cursor()
 
 # جدول المستخدمين
@@ -54,9 +54,14 @@ conn.commit()
 
 # --- جلب الروابط ديناميكياً من قاعدة البيانات ---
 def get_setting(key):
-    cursor.execute("SELECT value FROM settings WHERE key=?", (key,))
-    res = cursor.fetchone()
-    return res[0] if res else ""
+    try:
+        cursor.execute("SELECT value FROM settings WHERE key=?", (key,))
+        res = cursor.fetchone()
+        return res[0] if res else ""
+    except:
+        if key == 'support_url': return 'https://t.me/xq_7d'
+        if key == 'channel_url': return 'https://t.me/drov70'
+        return ""
 
 # --- الحالات (FSM) المطورة كاملة ---
 class SystemStates(StatesGroup):
@@ -264,7 +269,6 @@ async def super_admin_panel(call: types.CallbackQuery):
     ]
     await call.message.edit_text("👑 **مرحباً بك في لوحة التحكم الإدارية المطلقة**\nالتحكم الآن بالكامل من الأزرار بدون الحاجة لتعديل الكود:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
-# --- تكتيك التعديل والحذف الذكي (بدون كتابة ID يدوياً) ---
 def get_admin_elements_keyboard(action_prefix):
     cursor.execute("SELECT id, name, type FROM elements")
     items = cursor.fetchall()
@@ -310,7 +314,6 @@ async def perform_button_delete(call: types.CallbackQuery):
     await call.answer("✅ تم حذف الزر وكل محتوياته من المتجر!", show_alert=True)
     await call.message.edit_text("🗑 **اختر الزر المراد حذفه نهائياً بلمسة واحدة:**", reply_markup=get_admin_elements_keyboard("click_delete"))
 
-# --- تعديل الروابط ديناميكياً من داخل البوت (تعديل القناة والدعم) ---
 @dp.callback_query(F.data == "change_channel")
 async def change_channel_cmd(call: types.CallbackQuery, state: FSMContext):
     await call.message.answer(f"🔗 الرابط الحالي للقناة هو: {get_setting('channel_url')}\n\nأرسل الآن الرابط الجديد بالكامل:")
@@ -327,5 +330,74 @@ async def save_channel_link(message: types.Message, state: FSMContext):
 
 @dp.callback_query(F.data == "change_support")
 async def change_support_cmd(call: types.CallbackQuery, state: FSMContext):
-    await call.message.answer(f"👨‍💻 رابط الدعم الحالي هو: {get_setting('
-                                                                     
+    await call.message.answer(f"👨‍💻 رابط الدعم الحالي هو: {get_setting('support_url')}\n\nأرسل الآن رابط أو معرف الدعم الجديد:")
+    await state.set_state(SystemStates.edit_support_link)
+
+@dp.message(SystemStates.edit_support_link)
+async def save_support_link(message: types.Message, state: FSMContext):
+    if not message.text.startswith("http"):
+        return await message.answer("❌ خطأ! يجب أن يبدأ الرابط بـ http أو https. أعد الإرسال:")
+    cursor.execute("UPDATE settings SET value=? WHERE key='support_url'", (message.text,))
+    conn.commit()
+    await message.answer(f"✅ تم تحديث رابط الدعم الفني بنجاح إلى:\n{message.text}")
+    await state.clear()
+
+@dp.callback_query(F.data == "adm_add_element")
+async def build_step1(call: types.CallbackQuery, state: FSMContext):
+    cursor.execute("SELECT id, name FROM elements WHERE type='folder'")
+    folders = cursor.fetchall()
+    kb = [[InlineKeyboardButton(text="🔝 في واجهة الشراء الأساسية", callback_data="setparent_0")]]
+    for f in folders:
+        kb.append([InlineKeyboardButton(text=f"📁 داخل قسم: {f[1]}", callback_data=f"setparent_{f[0]}")])
+    await call.message.edit_text("📍 أين تريد وضع هذا الزر الجديد؟", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+
+@dp.callback_query(F.data.startswith("setparent_"))
+async def build_step2(call: types.CallbackQuery, state: FSMContext):
+    pid = int(call.data.split("_")[1])
+    await state.update_data(parent_id=pid)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📁 قسم فرعي جديد", callback_data="settype_folder"), InlineKeyboardButton(text="📝 نص أو منتج معروض", callback_data="settype_text")],
+        [InlineKeyboardButton(text="🔗 رابط ويب خارجي", callback_data="settype_link"), InlineKeyboardButton(text="📸 ميديا وصورة منتج", callback_data="settype_media")]
+    ])
+    await call.message.edit_text("⚙️ اختر نوع هذا الزر المخصص للتثبيت:", reply_markup=kb)
+
+@dp.callback_query(F.data.startswith("settype_"))
+async def build_step3(call: types.CallbackQuery, state: FSMContext):
+    elem_type = call.data.split("_")[1]
+    await state.update_data(type=elem_type)
+    await call.message.answer("🔤 أرسل الاسم النصي للزر:")
+    await state.set_state(SystemStates.wait_name)
+
+@dp.message(SystemStates.wait_name)
+async def build_step4(message: types.Message, state: FSMContext):
+    await state.update_data(name=message.text)
+    data = await state.get_data()
+    if data['type'] == 'folder':
+        cursor.execute('INSERT INTO elements (parent_id, type, name, content) VALUES (?, ?, ?, ?)', (data['parent_id'], 'folder', data['name'], 'none'))
+        conn.commit()
+        await message.answer("✅ تم إنشاء القسم المجلد بنجاح!")
+        await state.clear()
+    else:
+        await message.answer("📥 أرسل الآن المحتوى المطلوب ربطه بهذا الزر (نص، رابط، أو صورة):")
+        await state.set_state(SystemStates.wait_content)
+
+@dp.message(SystemStates.wait_content, F.any)
+async def build_step5(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    content = message.photo[-1].file_id if (data['type'] == 'media' and message.photo) else message.text
+    cursor.execute('INSERT INTO elements (parent_id, type, name, content) VALUES (?, ?, ?, ?)', (data['parent_id'], data['type'], data['name'], content))
+    conn.commit()
+    await message.answer("🎯 تم تثبيت الزر الجديد بنجاح مذهل!")
+    await state.clear()
+
+@dp.callback_query(F.data == "adm_stats")
+async def adm_stats(call: types.CallbackQuery):
+    cursor.execute('SELECT COUNT(*) FROM users')
+    u_count = cursor.fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM elements')
+    e_count = cursor.fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM purchases')
+    p_count = cursor.fetchone()[0]
+    
+    stat_text = f"📊 **إحصائيات متجرك السيادي:**\n\n👥 إجمالي المستخدمين: `{u_count}`\n📦 إجمالي الأزرار: `{e_
+  
