@@ -7,6 +7,7 @@ from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiohttp import web  # مكتبة الويب لخدعة الـ Port
 
 # --- الإعدادات الثابتة للبوت مالتنا ---
 API_TOKEN = os.getenv('BOT_TOKEN')
@@ -15,9 +16,9 @@ SUPER_ADMIN = 8333784255  # معرف المالك المطلق
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-DB_NAME = 'drov_production_v10.db'
+DB_NAME = 'drov_production_v11.db'
 
-# --- تأسيس قاعدة البيانات بشكل مستقر وسريع جداً ---
+# --- تأسيس قاعدة البيانات ---
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -48,7 +49,6 @@ def init_db():
 
 init_db()
 
-# --- جلب الروابط ديناميكياً بدون أي تعليق ---
 def get_setting(key):
     try:
         conn = sqlite3.connect(DB_NAME)
@@ -62,7 +62,6 @@ def get_setting(key):
         if key == 'channel_url': return 'https://t.me/drov70'
         return ""
 
-# --- الحالات (FSM) الشاملة للمتجر ---
 class SystemStates(StatesGroup):
     wait_name = State()
     wait_type = State()
@@ -73,7 +72,6 @@ class SystemStates(StatesGroup):
     edit_channel_link = State()
     edit_support_link = State()
 
-# --- محرك الكيبورد الرئيسي المطابق للمخطط ---
 def get_main_keyboard(user_id):
     kb = [
         [InlineKeyboardButton(text="🛒 الشراء وتصفح المتجر", callback_data="main_buy")],
@@ -86,7 +84,6 @@ def get_main_keyboard(user_id):
         
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- محرك المتجر وتوليد الأزرار الديناميكية ---
 def get_store_keyboard(parent_id=0):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -123,7 +120,6 @@ def get_store_keyboard(parent_id=0):
         
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- أمر التشغيل الأساسي /start ---
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
     user_id = message.from_user.id
@@ -164,13 +160,10 @@ async def start_cmd(message: types.Message):
         f"- 👍 رصيدك:  `{user_balance}` نقطة 💵.\n\n"
         f"👍 ابدأ باستخدام البوت الآن بالضغط على الأزرار بالأسفل ⬇️."
     )
-    
     if user_id == SUPER_ADMIN:
         welcome = "👑 **مرحباً بك يا سيادة المالك المطلق (لوحة التحكم متوفرة بالأسفل)**\n\n" + welcome
-        
     await message.answer(welcome, reply_markup=get_main_keyboard(user_id), parse_mode="Markdown")
 
-# --- معالجة الضغط على الأزرار والتنقل العكسي ---
 @dp.callback_query(F.data == "back_to_main")
 async def back_to_main(call: types.CallbackQuery):
     user_id = call.from_user.id
@@ -267,13 +260,10 @@ async def navigate_system(call: types.CallbackQuery):
     cursor = conn.cursor()
     cursor.execute('SELECT type, name, content FROM elements WHERE id=?', (target_id,))
     item = cursor.fetchone()
-    
     if not item: 
         conn.close()
         return await call.answer("العنصر المطلوب غير متوفر حالياً!")
-        
     item_type, name, content = item
-    
     if item_type == 'folder':
         conn.close()
         await call.message.edit_text(f"📂 قسم: {name}", reply_markup=get_store_keyboard(target_id))
@@ -292,7 +282,6 @@ async def navigate_system(call: types.CallbackQuery):
 @dp.callback_query(F.data == "super_admin_panel")
 async def super_admin_panel(call: types.CallbackQuery):
     if call.from_user.id != SUPER_ADMIN: return await call.answer("❌ صلاحية مرفوضة", show_alert=True)
-    
     kb = [
         [InlineKeyboardButton(text="➕ إضافة عنصر جديد", callback_data="adm_add_element")],
         [InlineKeyboardButton(text="✏️ تعديل اسم زر", callback_data="adm_edit_button"), InlineKeyboardButton(text="🗑 حذف زر", callback_data="adm_delete_button")],
@@ -308,7 +297,6 @@ def get_admin_elements_keyboard(action_prefix):
     cursor.execute("SELECT id, name, type FROM elements")
     items = cursor.fetchall()
     conn.close()
-    
     kb = []
     for item_id, name, item_type in items:
         symbol = "📁" if item_type == "folder" else "💎"
@@ -337,13 +325,11 @@ async def save_new_name(message: types.Message, state: FSMContext):
     data = await state.get_data()
     button_id = data['button_id']
     new_name = message.text
-    
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("UPDATE elements SET name=? WHERE id=?", (new_name, button_id))
     conn.commit()
     conn.close()
-    
     await message.answer(f"✅ تم تغيير اسم الزر بنجاح إلى: **{new_name}**")
     await state.clear()
 
@@ -403,7 +389,6 @@ async def build_step1(call: types.CallbackQuery, state: FSMContext):
     cursor.execute("SELECT id, name FROM elements WHERE type='folder'")
     folders = cursor.fetchall()
     conn.close()
-    
     kb = [[InlineKeyboardButton(text="🔝 في واجهة الشراء الأساسية", callback_data="setparent_0")]]
     for f in folders:
         kb.append([InlineKeyboardButton(text=f"📁 داخل قسم: {f[1]}", callback_data=f"setparent_{f[0]}")])
@@ -434,4 +419,10 @@ async def build_step4(message: types.Message, state: FSMContext):
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
         cursor.execute('INSERT INTO elements (parent_id, type, name, content) VALUES (?, ?, ?, ?)', (data['parent_id'], 'folder', data['name'], 'none'))
- 
+        conn.commit()
+        conn.close()
+        await message.answer("✅ تم إنشاء القسم المجلد بنجاح!")
+        await state.clear()
+    else:
+        await message.answer("📥 أرسل الآن المحتوى المطلوب ربطه بهذا الزر (نص، رابط، أو صورة):")
+        await state.set_state(SystemStates.wait_content
