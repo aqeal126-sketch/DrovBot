@@ -7,7 +7,7 @@ from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiohttp import web  # مكتبة الويب لخدعة الـ Port
+from aiohttp import web  # مكتبة الويب لخدعة الـ Port ومنع الـ Completed
 
 # --- الإعدادات الثابتة للبوت مالتنا ---
 API_TOKEN = os.getenv('BOT_TOKEN')
@@ -16,7 +16,7 @@ SUPER_ADMIN = 8333784255  # معرف المالك المطلق
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-DB_NAME = 'drov_production_v11.db'
+DB_NAME = 'drov_production_v12.db'
 
 # --- تأسيس قاعدة البيانات ---
 def init_db():
@@ -425,4 +425,4 @@ async def build_step4(message: types.Message, state: FSMContext):
         await state.clear()
     else:
         await message.answer("📥 أرسل الآن المحتوى المطلوب ربطه بهذا الزر (نص، رابط، أو صورة):")
-        await state.set_state(SystemStates.wait_content
+        await state.set_state(System
