@@ -21,7 +21,7 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
 # --- تأسيس النواة وقواعد البيانات الشاملة ---
-conn = sqlite3.connect('sovereign_store_v10.db', check_same_thread=False)
+conn = sqlite3.connect('sovereign_store_v11.db', check_same_thread=False)
 cursor = conn.cursor()
 
 cursor.execute('''CREATE TABLE IF NOT EXISTS users (
@@ -134,7 +134,7 @@ def get_manage_keyboard(parent_id=0):
         
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- أمر البداية مع رسالة الترحيب المخصصة مالتك ---
+# --- أمر البداية مع رسالة الترحيب المخصصة ---
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
     user_id = message.from_user.id
@@ -188,7 +188,7 @@ async def start_cmd(message: types.Message):
 async def check_subscription(call: types.CallbackQuery):
     if await is_subscribed(call.from_user.id):
         await call.answer("✅ تم التحقق بنجاح! تم تفعيل البوت لك.", show_alert=True)
-        try: await call.message.delete() # حذف رسالة الاشتراك لتنظيف الشات
+        try: await call.message.delete()
         except: pass
         user_id = call.from_user.id
         cursor.execute('SELECT balance FROM users WHERE user_id=?', (user_id,))
@@ -204,10 +204,9 @@ async def check_subscription(call: types.CallbackQuery):
     else:
         await call.answer("❌ أنت غير مشترك في القناة حالياً! اشترك أولاً ثم اضغط مجدداً.", show_alert=True)
 
-# --- جدار الحماية الرئيسي الشامل لجميع ضغطات الأزرار (Callback Queries) ---
+# --- جدار الحماية الرئيسي الشامل لجميع ضغطات الأزرار ---
 @dp.callback_query()
 async def global_callback_guard(call: types.CallbackQuery, state: FSMContext):
-    # إذا كان المستخدم غير مشترك، نمنعه فوراً من كل العمليات مالتنا
     if not await is_subscribed(call.from_user.id):
         await call.answer("❌ عذراً! تم تقييد حسابك، يرجى الاشتراك في القناة أولاً لاستخدام أزرار البوت.", show_alert=True)
         try:
@@ -220,7 +219,6 @@ async def global_callback_guard(call: types.CallbackQuery, state: FSMContext):
 
     data = call.data
     
-    # 1. القائمة الرئيسية والعودة
     if data == "back_to_main":
         user_id = call.from_user.id
         cursor.execute('SELECT balance FROM users WHERE user_id=?', (user_id,))
@@ -293,7 +291,6 @@ async def global_callback_guard(call: types.CallbackQuery, state: FSMContext):
         kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 رجوع", callback_data="back_to_main")]])
         await call.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
 
-    # 2. الأزرار الديناميكية لتصفح المتجر والشراء
     elif data.startswith("view_"):
         target_id = int(data.split("_")[1])
         if target_id == 0:
@@ -316,7 +313,6 @@ async def global_callback_guard(call: types.CallbackQuery, state: FSMContext):
             conn.commit()
             await call.message.answer_photo(photo=content, caption=f"📸 {name}\n\n*(تمت إضافة الملف إلى سجل مشترياتك)*")
 
-    # 3. لوحة تحكم المالك العليا السيادية
     elif data == "super_admin_panel":
         if call.from_user.id != SUPER_ADMIN: return await call.answer("❌ لا تملك هذه الصلاحية السيادية!", show_alert=True)
         kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -349,7 +345,8 @@ async def global_callback_guard(call: types.CallbackQuery, state: FSMContext):
     elif data.startswith("editname_"):
         if call.from_user.id != SUPER_ADMIN: return
         item_id = int(data.split("_")[1])
-        await state.update_data(edit_item_id=item_id)
+        # تجاوز الخطأ الداخلي للمكتبة بـ set_data بدلاً من update_data
+        await state.set_data({"edit_item_id": item_id})
         await call.message.answer("✏️ أرسل الآن الاسم الجديد للزر المختار:")
         await state.set_state(SystemStates.wait_new_name)
 
@@ -377,7 +374,8 @@ async def global_callback_guard(call: types.CallbackQuery, state: FSMContext):
     elif data.startswith("setparent_"):
         if call.from_user.id != SUPER_ADMIN: return
         pid = int(data.split("_")[1])
-        await state.update_data(parent_id=pid)
+        # تجاوز الخطأ الداخلي
+        await state.set_data({"parent_id": pid})
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="📁 قسم فرعي جديد", callback_data="settype_folder"), InlineKeyboardButton(text="📝 نص أو منتج معروض", callback_data="settype_text")],
             [InlineKeyboardButton(text="🔗 رابط ويب أو قناة", callback_data="settype_link"), InlineKeyboardButton(text="📸 ميديا وصورة منتج", callback_data="settype_media")]
@@ -387,10 +385,13 @@ async def global_callback_guard(call: types.CallbackQuery, state: FSMContext):
     elif data.startswith("settype_"):
         if call.from_user.id != SUPER_ADMIN: return
         elem_type = data.split("_")[1]
-        await state.update_data(type=elem_type)
+        user_data = await state.get_data()
+        user_data["type"] = elem_type
+        await state.set_data(user_data) # حل آمن للبيانات
         await call.message.answer("🔤 أرسل الاسم النصي للزر (الذي سيظهر للزبائن):")
         await state.set_state(SystemStates.wait_name)
 
     elif data == "adm_stats":
         cursor.execute('SELECT COUNT(*) FROM users'); u_count = cursor.fetchone()[0]
-        cursor.execute('SELECT 
+        cursor.execute('SELECT COUNT(*) FROM elements'); e_count = cursor.fetchone()[0]
+          
