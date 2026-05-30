@@ -14,18 +14,18 @@ from aiohttp import web
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 SUPER_ADMIN = 8333784255  # معرف المالك المطلق
 
-MY_ACCOUNT_URL = "https://t.me/xq_7d"  
-CHANNEL_URL = "https://t.me/drov70"       
+MY_ACCOUNT_URL = "https://t.me/xq_7d"  # حساب الدعم الفني
+CHANNEL_URL = "https://t.me/drov70"       # قناة التفعيلات
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 DB_NAME = 'sovereign_store_v9.db'
 
-# --- قاموس اللغات الشامل لكل نصوص البوت ---
+# --- قاموس اللغات الشامل لكل نصوص البوت مع تحسين الإيموجيات ---
 STRINGS = {
     'ar': {
-        'select_lang': "الرجاء اختيار اللغة الخاصة بك للبدء: 🌐",
-        'welcome': "أهلاً بكم في -  Drov TG   👋\n\n🚀 أقوى سوق لبيع وشراء حسابات تيليجرام الجاهزة والجديدة لجميع الدول حول العالم 🌐.\n\n- ايديك: `{user_id}` 🆔.\n- 👍 رصيدك: `${balance}` دولار 💵.\n\n👍 ابدأ باستخدام البوت الآن بالضغط على الأزرار بالأسفل ⬇️.",
+        'select_lang': "🌐 الرجاء اختيار اللغة الخاصة بك للبدء / Please select your language:",
+        'welcome': "👋 أهلاً بكم في - **Drov TG**\n\n🚀 أقوى سوق لبيع وشراء حسابات تيليجرام الجاهزة والجديدة لجميع الدول حول العالم 🌐.\n\n🆔 ايديك: `{user_id}`\n💵 رصيدك الحالي: `${balance}` دولار\n\n⬇️ ابدأ باستخدام البوت الآن بالضغط على الأزرار بالأسفل:",
         'admin_welcome': "👑 **مرحباً بك يا سيادة المالك المطلق (لوحة التحكم متوفرة بالأسفل)**\n\n",
         'btn_buy': "🛒 الشراء وتصفح المتجر",
         'btn_charge': "💰 شحن رصيد",
@@ -37,25 +37,25 @@ STRINGS = {
         'btn_change_lang': "🌐 تغيير اللغة / Change Language",
         'btn_back': "🔙 رجوع للخلف",
         'btn_main_menu': "🔙 العودة للقائمة الرئيسية",
-        'store_title': "🛒 أقسام المتجر والمنتجات المتوفرة الاحترافية:",
+        'store_title': "🛒 **أقسام المتجر والمنتجات المتوفرة الاحترافية:**\n\n✨ تصفح الأقسام واضغط على المنتج لشراءه فوراً:",
         'soon_alert': "⚠️ هذا القسم غير متوفر حالياً، سيتم إطلاقه قريباً جداً!",
-        'soon_tag': "قريباً",
-        'insufficient_balance': "❌ رصيدك غير كافٍ لشراء هذه السلعة!\nسعر المنتج: ${price}\nرصيدك الحالي: ${balance}",
+        'soon_tag': "قريباً ⏳",
+        'insufficient_balance': "❌ رصيدك غير كافٍ لشراء هذه السلعة!\n\n💵 سعر المنتج: ${price}\n💳 رصيدك الحالي: ${balance}",
         'purchase_success': "✅ تمت عملية الشراء بنجاح! تم خصم الرصيد وتسليم السلعة.",
-        'thanks': "*(شكراً لتسوقك من متجر Drov)*",
-        'charge_title': "💰 **قسم شحن الرصيد والحساب**\n\n💳 رصيدك الحالي: `${balance}` دولار.\n\nيمكنك تجميع الرصيد مجاناً عبر نظام الإحالة، أو التواصل مع المالك مباشرة للشحن الفوري.",
+        'thanks': "🎁 *(شكراً لتسوقك من متجر Drov)*",
+        'charge_title': "💰 **قسم شحن الرصيد والحساب**\n\n💳 رصيدك الحالي: `${balance}` دولار.\n\n💡 يمكنك تجميع الرصيد مجاناً عبر نظام الإحالة، أو التواصل مع المالك مباشرة للشحن الفوري.",
         'btn_gift': "🎁 استلام الهدية اليومية",
         'btn_contact_charge': "📥 تواصل معي للشراء والشحن",
         'gift_already': "❌ لقد قمت باستلام هديتك اليومية بالفعل! عد غداً يا بطل.",
         'gift_success': "🎉 مبروك! حصلت على $0.10 دولار مجاناً كهدية يومية.",
-        'ref_title': "🔗 **نظام الإحالة وتجميع الرصيد مجاناً**\n\nشارك الرابط الخاص بك مع أصدقائك، وكل شخص يدخل للبوت عن طريقك ستحصل فوراً على **$0.50 دولار مجاناً** في رصيدك لشراء المنتجات!\n\nرابطك الخاص:\n`{ref_link}`",
+        'ref_title': "🔗 **نظام الإحالة وتجميع الرصيد مجاناً**\n\n🤝 شارك الرابط الخاص بك مع أصدقائك، وكل شخص يدخل للبوت عن طريقك ستحصل فوراً على **$0.50 دولار مجاناً** في رصيدك لشراء المنتجات!\n\n🔗 رابطك الخاص:\n`{ref_link}`",
         'purchases_title': "📦 **سجل مشترياتك من البوت:**\n\n",
-        'no_purchases': "أنت لم تقم بشراء أي شيء بعد. تصفح قسم الشراء لتسوق منتجاتنا!",
+        'no_purchases': "🛍 أنت لم تقم بشراء أي شيء بعد. تصفح قسم الشراء لتسوق منتجاتنا!",
         'ref_alert': "🎉 قام {username} بالدخول للبوت عبر رابطك، وتمت إضافة $0.50 لرصيدك!"
     },
     'en': {
-        'select_lang': "Please select your language to start: 🌐",
-        'welcome': "Welcome to - Drov TG 👋\n\n🚀 The most powerful market for buying and selling ready-made and new Telegram accounts worldwide 🌐.\n\n- Your ID: `{user_id}` 🆔.\n- 👍 Balance: `${balance}` USD 💵.\n\n👍 Start using the bot now by clicking the buttons below ⬇️.",
+        'select_lang': "🌐 Please select your language to start / الرجاء اختيار اللغة:",
+        'welcome': "Welcome to - **Drov TG** 👋\n\n🚀 The most powerful market for buying and selling ready-made and new Telegram accounts worldwide 🌐.\n\n🆔 Your ID: `{user_id}`\n💵 Balance: `${balance}` USD\n\n⬇️ Start using the bot now by clicking the buttons below:",
         'admin_welcome': "👑 **Welcome, Supreme Owner! (Admin Panel available below)**\n\n",
         'btn_buy': "🛒 Browse & Buy",
         'btn_charge': "💰 Top-up Balance",
@@ -67,25 +67,25 @@ STRINGS = {
         'btn_change_lang': "🌐 Change Language / تغيير اللغة",
         'btn_back': "🔙 Back",
         'btn_main_menu': "🔙 Back to Main Menu",
-        'store_title': "🛒 Store Categories and Available Products:",
+        'store_title': "🛒 **Store Categories and Available Products:**\n\n✨ Browse categories and click on any product to buy instantly:",
         'soon_alert': "⚠️ This section is currently unavailable, it will be launched very soon!",
-        'soon_tag': "Soon",
-        'insufficient_balance': "❌ Insufficient balance to buy this item!\nProduct Price: ${price}\nYour Balance: ${balance}",
+        'soon_tag': "Soon ⏳",
+        'insufficient_balance': "❌ Insufficient balance to buy this item!\n\n💵 Product Price: ${price}\n💳 Your Balance: ${balance}",
         'purchase_success': "✅ Purchase successful! Balance deducted and item delivered.",
-        'thanks': "*(Thank you for shopping at Drov Store)*",
-        'charge_title': "💰 **Balance & Account Top-up Section**\n\n💳 Current Balance: `${balance}` USD.\n\nYou can collect balance for free via the referral system, or contact the owner directly for instant top-up.",
+        'thanks': "🎁 *(Thank you for shopping at Drov Store)*",
+        'charge_title': "💰 **Balance & Account Top-up Section**\n\n💳 Current Balance: `${balance}` USD.\n\n💡 You can collect balance for free via the referral system, or contact the owner directly for instant top-up.",
         'btn_gift': "🎁 Claim Daily Gift",
         'btn_contact_charge': "📥 Contact Me to Buy & Top-up",
         'gift_already': "❌ You have already claimed your daily gift! Come back tomorrow.",
         'gift_success': "🎉 Congratulations! You received $0.10 free USD as a daily gift.",
-        'ref_title': "🔗 **Referral System & Free Balance**\n\nShare your link with friends. For every person who joins via your link, you will instantly get **$0.50 free USD** added to your balance!\n\nYour Link:\n`{ref_link}`",
+        'ref_title': "🔗 **Referral System & Free Balance**\n\n🤝 Share your link with friends. For every person who joins via your link, you will instantly get **$0.50 free USD** added to your balance!\n\n🔗 Your Link:\n`{ref_link}`",
         'purchases_title': "📦 **Your Purchase History:**\n\n",
-        'no_purchases': "You haven't bought anything yet. Browse the store to shop our products!",
+        'no_purchases': "🛍 You haven't bought anything yet. Browse the store to shop our products!",
         'ref_alert': "🎉 {username} joined via your link, $0.50 USD has been added to your balance!"
     },
     'ru': {
-        'select_lang': "Пожалуйста, выберите язык для начала: 🌐",
-        'welcome': "Добро пожаловать в - Drov TG 👋\n\n🚀 Самый мощный маркетплейс по покупке и продаже готовых и новых аккаунтов Telegram по всему миру 🌐.\n\n- Ваш ID: `{user_id}` 🆔.\n- 👍 Баланс: `${balance}` USD 💵.\n\n👍 Начните использовать бота прямо сейчас, нажимая кнопки ниже ⬇️.",
+        'select_lang': "🌐 Пожалуйста, выберите язык для начала / Please select your language:",
+        'welcome': "Добро пожаловать в - **Drov TG** 👋\n\n🚀 Самый мощный маркетплейс по покупке и продаже готовых и новых аккаунтов Telegram по всему миру 🌐.\n\n🆔 Ваш ID: `{user_id}`\n💵 Баланс: `${balance}` USD\n\n⬇️ Начните использовать бота прямо сейчас, нажимая кнопки ниже:",
         'admin_welcome': "👑 **Добро пожаловать, Владелец! (Панель управления доступна ниже)**\n\n",
         'btn_buy': "🛒 Купить и Просмотреть",
         'btn_charge': "💰 Пополнить баланс",
@@ -97,20 +97,20 @@ STRINGS = {
         'btn_change_lang': "🌐 Изменить язык / Change Language",
         'btn_back': "🔙 Назад",
         'btn_main_menu': "🔙 В главное меню",
-        'store_title': "🛒 Категории магазина и доступные товары:",
+        'store_title': "🛒 **Категории магазина и доступные товары:**\n\n✨ Просмотрите категории и нажмите на товар, чтобы купить его мгновенно:",
         'soon_alert': "⚠️ Этот раздел сейчас недоступен, он будет запущен очень скоро!",
-        'soon_tag': "Скоро",
-        'insufficient_balance': "❌ Недостаточно средств для покупки!\nЦена товара: ${price}\nВаш баланс: ${balance}",
+        'soon_tag': "Скоро ⏳",
+        'insufficient_balance': "❌ Недостаточно средств для покупки!\n\n💵 Цена товара: ${price}\n💳 Ваш баланс: ${balance}",
         'purchase_success': "✅ Покупка успешна! Баланс списан, товар доставлен.",
-        'thanks': "*(Спасибо за покупку в магазине Drov)*",
-        'charge_title': "💰 **Раздел пополнения баланса и аккаунта**\n\n💳 Текущий баланс: `${balance}` USD.\n\nВы можете собирать баланс бесплатно через реферальную систему или связаться с владельцем напрямую для пополнения.",
+        'thanks': "🎁 *(Спасибо за покупку в магазине Drov)*",
+        'charge_title': "💰 **Раздел пополнения баланса и аккаунта**\n\n💳 Текущий баланс: `${balance}` USD.\n\n💡 Вы можете собирать баланс бесплатно через реферальную систему или связаться с владельцем напрямую для пополнения.",
         'btn_gift': "🎁 Получить ежедневный бонус",
         'btn_contact_charge': "📥 Связаться для пополнения",
         'gift_already': "❌ Вы уже получили свой ежедневный бонус! Возвращайтесь завтра.",
         'gift_success': "🎉 Поздравляем! Вы получили $0.10 USD бесплатно в качестве бонуса.",
-        'ref_title': "🔗 **Реферальная система и бесплатный баланс**\n\nПоделитесь своей ссылкой с друзьями. За каждого человека, который зайдет по вашей ссылке, вы мгновенно получите **$0.50 USD** на свой баланс!\n\nВаша ссылка:\n`{ref_link}`",
+        'ref_title': "🔗 **Реферальная система и бесплатный баланс**\n\n🤝 Поделитесь своей ссылкой с друзьями. За каждого человека, который зайдет по вашей ссылке, вы мгновенно получите **$0.50 USD** на свой баланс!\n\n🔗 Ваша ссылка:\n`{ref_link}`",
         'purchases_title': "📦 **История ваших покупок:**\n\n",
-        'no_purchases': "Вы еще ничего не купили. Загляните в магазин, чтобы сделать покупки!",
+        'no_purchases': "🛍 Вы еще ничего не купили. Загляните в магазин, чтобы сделать покупки!",
         'ref_alert': "🎉 {username} зарегистрировался по вашей ссылке, $0.50 USD добавлены на ваш баланс!"
     }
 }
@@ -147,13 +147,13 @@ def init_db():
     count = db_read("SELECT COUNT(*) FROM elements WHERE parent_id = 0")
     if count[0][0] == 0:
         categories = [
-            ('soon', 'قسم الارقام API', 'API Numbers Section', 'Раздел API Номера', 'none', 0.0),
-            ('folder', 'قسم الادوات', 'Tools Section', 'Раздел Инструменты', 'none', 0.0),
-            ('folder', 'قسم اليوزرات التليغرام', 'Telegram Usernames Section', 'Раздел Юзернеймы Telegram', 'none', 0.0),
-            ('folder', 'قسم اليوزرات تيك توك', 'TikTok Usernames Section', 'Раздел Юзернеймы TikTok', 'none', 0.0),
-            ('soon', 'قسم يوزرات الديسكورد', 'Discord Usernames Section', 'Раздел Юзернеймы Discord', 'none', 0.0),
-            ('folder', 'قسم اليوزرات الانستقرام', 'Instagram Usernames Section', 'Раздел Юзернеймы Instagram', 'none', 0.0),
-            ('folder', 'قسم بيع القنوات والمجموعات التليغرام', 'Telegram Channels & Groups Sale', 'Продажа каналов и групп Telegram', 'none', 0.0)
+            ('soon', '🔢 قسم الارقام API', '🔢 API Numbers Section', '🔢 Раздел API Номера', 'none', 0.0),
+            ('folder', '🛠️ قسم الادوات', '🛠️ Tools Section', '🛠️ Раздел Инструменты', 'none', 0.0),
+            ('folder', '📨 قسم اليوزرات التليغرام', '📨 Telegram Usernames Section', '📨 Раздел Юзернеймы Telegram', 'none', 0.0),
+            ('folder', '🎵 قسم اليوزرات تيك توك', '🎵 TikTok Usernames Section', '🎵 Раздел Юзернеймы TikTok', 'none', 0.0),
+            ('soon', '🎮 قسم يوزرات الديسكورد', '🎮 Discord Usernames Section', '🎮 Раздел Юзернеймы Discord', 'none', 0.0),
+            ('folder', '📸 قسم اليوزرات الانستقرام', '📸 Instagram Usernames Section', '📸 Раздел Юзернеймы Instagram', 'none', 0.0),
+            ('folder', '📢 قسم بيع القنوات والمجموعات', '📢 Channels & Groups Sale', '📢 Продажа каналов и групп', 'none', 0.0)
         ]
         for cat in categories:
             db_write("INSERT INTO elements (type, name_ar, name_en, name_ru, content, price) VALUES (?, ?, ?, ?, ?, ?)", cat)
@@ -208,10 +208,10 @@ def get_store_keyboard(parent_id, lang):
         content = item[5]
         price = item[6]
         
-        price_disp = f"${int(price) if price.is_integer() else price}"
+        price_disp = f"${int(price) if price.is_integer() else price:.2f}"
         
         if item_type == 'soon':
-            row.append(InlineKeyboardButton(text=f"🔒 {name} ({s['soon_tag']})", callback_data=f"view_{item_id}"))
+            row.append(InlineKeyboardButton(text=f"{name} ({s['soon_tag']})", callback_data=f"view_{item_id}"))
         elif item_type == 'link':
             row.append(InlineKeyboardButton(text=f"🔗 {name}", url=content))
         elif item_type == 'folder':
@@ -256,7 +256,7 @@ async def start_cmd(message: types.Message):
         db_write('UPDATE users SET username=? WHERE user_id=?', (username, user_id))
 
     if lang == 'none':
-        await message.answer("الرجاء اختيار اللغة الخاصة بك للبدء / Please select your language: 🌐", reply_markup=get_lang_keyboard())
+        await message.answer("🌐 الرجاء اختيار اللغة الخاصة بك للبدء / Please select your language:", reply_markup=get_lang_keyboard())
     else:
         balance = db_read('SELECT balance FROM users WHERE user_id=?', (user_id,))[0][0]
         bal_disp = int(balance) if float(balance).is_integer() else balance
@@ -281,7 +281,7 @@ async def set_language_callback(call: types.CallbackQuery):
 
 @dp.callback_query(F.data == "trigger_lang_change")
 async def trigger_lang_change(call: types.CallbackQuery):
-    await call.message.edit_text("Select Language / اختر اللغة:", reply_markup=get_lang_keyboard())
+    await call.message.edit_text("🌐 Select Language / اختر اللغة:", reply_markup=get_lang_keyboard())
 
 @dp.callback_query(F.data == "back_to_main")
 async def back_to_main(call: types.CallbackQuery):
@@ -323,7 +323,7 @@ async def view_store_element(call: types.CallbackQuery):
         return await call.answer(s['soon_alert'], show_alert=True)
         
     elif item_type == 'folder':  
-        await call.message.edit_text(f"📂 {name}", reply_markup=get_store_keyboard(target_id, lang), parse_mode="Markdown")  
+        await call.message.edit_text(f"📂 **{name}**", reply_markup=get_store_keyboard(target_id, lang), parse_mode="Markdown")  
         
     elif item_type in ['text', 'media']:
         user_bal = db_read('SELECT balance FROM users WHERE user_id=?', (user_id,))[0][0]
@@ -410,7 +410,7 @@ async def main_purchases(call: types.CallbackQuery):
             text += f"{idx}. 🛍 `{item[0]}` - 📅: {item[1]}\n"  
               
     kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=s['btn_back'], callback_data="back_to_main")]])  
-    await call.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+    await call.message.edit_text(text=reply_markup=kb, parse_mode="Markdown")
 
 # --- لوحة تحكم المالك ---
 @dp.callback_query(F.data == "super_admin_panel")
