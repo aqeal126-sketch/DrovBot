@@ -13,7 +13,7 @@ from aiogram.exceptions import TelegramAPIError
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 SUPER_ADMIN = 8333784255  # معرف المالك المطلق
 
-MY_ACCOUNT_URL = "https://t.me/xq_7d"  # دعم المتجر
+MY_ACCOUNT_URL = "https://t.me/xq_7d"  # حساب الدعم الفني
 CHANNEL_URL = "https://t.me/drov70"       # قناة التفعيلات
 
 bot = Bot(token=BOT_TOKEN)
@@ -339,7 +339,6 @@ async def view_store_element(call: types.CallbackQuery):
         elif item_type == 'media':  
             await call.message.answer_photo(photo=content, caption=f"📸 **{name}**\n\n{s['thanks']}", parse_mode="Markdown")
 
-# === [تمت صيانة هذا الجزء - السطر 358 وما بعده] ===
 @dp.callback_query(F.data == "main_charge")
 async def main_charge(call: types.CallbackQuery):
     user_id = call.from_user.id
@@ -355,7 +354,8 @@ async def main_charge(call: types.CallbackQuery):
         [InlineKeyboardButton(text=s['btn_back'], callback_data="back_to_main")]  
     ])  
     
-    # تم تصحيح صياغة النص والتأكد من إغلاق دالة الاستدعاء كاملة هنا
     await call.message.edit_text(text=s['charge_title'].format(balance=bal_disp), reply_markup=kb, parse_mode="Markdown")
 
-@dp.callback_q
+@dp.callback_query(F.data == "get_daily_gift")
+async def get_daily_gift(call: types.CallbackQuery):
+    user_id = call.from_user.
