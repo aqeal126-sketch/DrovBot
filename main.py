@@ -358,4 +358,4 @@ async def main_charge(call: types.CallbackQuery):
     await call.message.edit_text(text=s['charge_title'].format(balance=bal_disp), reply_markup=kb, parse_mode="Markdown")
 
 @dp.callback_query(F.data == "get_daily_gift")
-async def get_dai
+async def get_daily_gift(call: types.CallbackQuery):
