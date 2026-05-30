@@ -7,6 +7,7 @@ from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.exceptions import TelegramAPIError
 
 # --- الإعدادات الثابتة للمتجر ---
 BOT_TOKEN = os.getenv('BOT_TOKEN')
@@ -142,7 +143,6 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, 
         item_name TEXT, purchase_date TEXT)''')
     
-    # بذر وحقن الأقسام السبعة الأساسية إذا كانت القاعدة جديدة فارغة
     count = db_read("SELECT COUNT(*) FROM elements WHERE parent_id = 0")
     if count[0][0] == 0:
         categories = [
@@ -355,4 +355,4 @@ async def main_charge(call: types.CallbackQuery):
         [InlineKeyboardButton(text=s['btn_contact_charge'], url=MY_ACCOUNT_URL)],  
         [InlineKeyboardButton(text=s['btn_back'], callback_data="back_to_main")]  
     ])  
-    await call.message.edit_text(s['charge_title'].format(balance=bal_disp), reply_markup=kb,
+    await call.message.edit_text(s['charge_title'].format(balance=bal_disp), reply_markup=kb, parse_mode="Markdow
