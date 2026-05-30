@@ -111,7 +111,7 @@ STRINGS = {
         'ref_title': "🔗 **Реферальная система и бесплатный баланс**\n\nПоделитесь своей ссылкой с друзьями. За каждого человека, который зайдет по вашей ссылке, вы мгновенно получите **$0.50 USD** на свой баланс!\n\nВаша ссылка:\n`{ref_link}`",
         'purchases_title': "📦 **История ваших покупок:**\n\n",
         'no_purchases': "Вы еще ничего не купили. Загляните в магазин, чтобы сделать покупки!",
-        'ref_alert': "🎉 {username} зарегистрировался по вашей ссылке, $0.50 USD добавлены на ваш баланс!"
+        'ref_alert': "🎉 {username} зарегистрировался по вашей ссылке, $0.50 USD добалены на ваш баланс!"
     }
 }
 
@@ -175,22 +175,22 @@ class SystemStates(StatesGroup):
 # --- الكيبوردات ---
 def get_lang_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🇸🇦 العربية", callback_data="setlang_ar")],, style="primary"
-        [InlineKeyboardButton(text="🇺🇸 English", callback_data="setlang_en")],, style="danger"
-        [InlineKeyboardButton(text="🇷🇺 Русский", callback_data="setlang_ru")], style="danger"
+        [InlineKeyboardButton(text="🇸🇦 العربية", callback_data="setlang_ar")],
+        [InlineKeyboardButton(text="🇺🇸 English", callback_data="setlang_en")],
+        [InlineKeyboardButton(text="🇷🇺 Русский", callback_data="setlang_ru")]
     ])
 
 def get_main_keyboard(user_id, lang):
     s = STRINGS[lang]
     kb = [
-        [InlineKeyboardButton(text=s['btn_buy'], callback_data="main_buy")],, style="success"
-        [InlineKeyboardButton(text=s['btn_charge'], callback_data="main_charge"), InlineKeyboardButton(text=s['btn_purchases'], callback_data="main_purchases")],, style="primary"
-        [InlineKeyboardButton(text=s['btn_referral'], callback_data="main_referral"), InlineKeyboardButton(text=s['btn_channel'], url=CHANNEL_URL)],, style="success"
-        [InlineKeyboardButton(text=s['btn_support'], url=MY_ACCOUNT_URL)],, style="success"
-        [InlineKeyboardButton(text=s['btn_change_lang'], callback_data="trigger_lang_change")], style="success"
+        [InlineKeyboardButton(text=s['btn_buy'], callback_data="main_buy")],
+        [InlineKeyboardButton(text=s['btn_charge'], callback_data="main_charge"), InlineKeyboardButton(text=s['btn_purchases'], callback_data="main_purchases")],
+        [InlineKeyboardButton(text=s['btn_referral'], callback_data="main_referral"), InlineKeyboardButton(text=s['btn_channel'], url=CHANNEL_URL)],
+        [InlineKeyboardButton(text=s['btn_support'], url=MY_ACCOUNT_URL)],
+        [InlineKeyboardButton(text=s['btn_change_lang'], callback_data="trigger_lang_change")]
     ]
     if user_id == SUPER_ADMIN:
-        kb.append([InlineKeyboardButton(text=s['btn_admin'], callback_data="super_admin_panel")], style="danger")
+        kb.append([InlineKeyboardButton(text=s['btn_admin'], callback_data="super_admin_panel")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 def get_store_keyboard(parent_id, lang):
@@ -211,13 +211,13 @@ def get_store_keyboard(parent_id, lang):
         price_disp = f"${int(price) if price.is_integer() else price}"
         
         if item_type == 'soon':
-            row.append(InlineKeyboardButton(text=f"🔒 {name} ({s['soon_tag']})", callback_data=f"view_{item_id}"), style="success")
+            row.append(InlineKeyboardButton(text=f"🔒 {name} ({s['soon_tag']})", callback_data=f"view_{item_id}"))
         elif item_type == 'link':
-            row.append(InlineKeyboardButton(text=f"🔗 {name}", url=content), style="primary")
+            row.append(InlineKeyboardButton(text=f"🔗 {name}", url=content))
         elif item_type == 'folder':
-            row.append(InlineKeyboardButton(text=f"📁 {name}", callback_data=f"view_{item_id}"), style="primary")
+            row.append(InlineKeyboardButton(text=f"📁 {name}", callback_data=f"view_{item_id}"))
         else:
-            row.append(InlineKeyboardButton(text=f"💎 {name} | {price_disp}", callback_data=f"view_{item_id}"), style="danger")
+            row.append(InlineKeyboardButton(text=f"💎 {name} | {price_disp}", callback_data=f"view_{item_id}"))
 
         if len(row) == 2:  
             kb.append(row)  
@@ -227,9 +227,9 @@ def get_store_keyboard(parent_id, lang):
     if parent_id != 0:  
         gp = db_read('SELECT parent_id FROM elements WHERE id=?', (parent_id,))
         gp_id = gp[0][0] if gp else 0  
-        kb.append([InlineKeyboardButton(text=s['btn_back'], callback_data=f"view_{gp_id}")]) , style="success")
+        kb.append([InlineKeyboardButton(text=s['btn_back'], callback_data=f"view_{gp_id}")])
     else:  
-        kb.append([InlineKeyboardButton(text=s['btn_main_menu'], callback_data="back_to_main")]) , style="danger")
+        kb.append([InlineKeyboardButton(text=s['btn_main_menu'], callback_data="back_to_main")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 # --- المعالجات الخاصة بالمستخدم ---
@@ -350,9 +350,9 @@ async def main_charge(call: types.CallbackQuery):
     
     bal_disp = int(balance) if float(balance).is_integer() else balance
     kb = InlineKeyboardMarkup(inline_keyboard=[  
-        [InlineKeyboardButton(text=s['btn_gift'], callback_data="get_daily_gift")],  , style="primary"
-        [InlineKeyboardButton(text=s['btn_contact_charge'], url=MY_ACCOUNT_URL)],  , style="success"
-        [InlineKeyboardButton(text=s['btn_back'], callback_data="back_to_main")]  , style="success"
+        [InlineKeyboardButton(text=s['btn_gift'], callback_data="get_daily_gift")],  
+        [InlineKeyboardButton(text=s['btn_contact_charge'], url=MY_ACCOUNT_URL)],  
+        [InlineKeyboardButton(text=s['btn_back'], callback_data="back_to_main")]  
     ])  
     
     await call.message.edit_text(text=s['charge_title'].format(balance=bal_disp), reply_markup=kb, parse_mode="Markdown")
@@ -377,9 +377,9 @@ async def get_daily_gift(call: types.CallbackQuery):
         balance = db_read('SELECT balance FROM users WHERE user_id=?', (user_id,))[0][0]
         bal_disp = int(balance) if float(balance).is_integer() else balance
         kb = InlineKeyboardMarkup(inline_keyboard=[  
-            [InlineKeyboardButton(text=s['btn_gift'], callback_data="get_daily_gift")],  , style="primary"
-            [InlineKeyboardButton(text=s['btn_contact_charge'], url=MY_ACCOUNT_URL)],  , style="primary"
-            [InlineKeyboardButton(text=s['btn_back'], callback_data="back_to_main")]  , style="success"
+            [InlineKeyboardButton(text=s['btn_gift'], callback_data="get_daily_gift")],  
+            [InlineKeyboardButton(text=s['btn_contact_charge'], url=MY_ACCOUNT_URL)],  
+            [InlineKeyboardButton(text=s['btn_back'], callback_data="back_to_main")]  
         ])  
         try: await call.message.edit_text(text=s['charge_title'].format(balance=bal_disp), reply_markup=kb, parse_mode="Markdown")  
         except: pass
@@ -391,7 +391,7 @@ async def main_referral(call: types.CallbackQuery):
     if lang == 'none': lang = 'ar'
     bot_info = await bot.get_me()
     ref_link = f"https://t.me/{bot_info.username}?start={user_id}"
-    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=STRINGS[lang]['btn_back'], callback_data="back_to_main")]]) , style="danger")
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=STRINGS[lang]['btn_back'], callback_data="back_to_main")]]) 
     await call.message.edit_text(STRINGS[lang]['ref_title'].format(ref_link=ref_link), reply_markup=kb, parse_mode="Markdown")
 
 @dp.callback_query(F.data == "main_purchases")
@@ -409,7 +409,7 @@ async def main_purchases(call: types.CallbackQuery):
         for idx, item in enumerate(rows, start=1):  
             text += f"{idx}. 🛍 `{item[0]}` - 📅: {item[1]}\n"  
               
-    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=s['btn_back'], callback_data="back_to_main")]]) , style="danger")
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=s['btn_back'], callback_data="back_to_main")]]) 
     await call.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
 
 # --- لوحة تحكم المالك ---
@@ -417,27 +417,27 @@ async def main_purchases(call: types.CallbackQuery):
 async def super_admin_panel(call: types.CallbackQuery):
     if call.from_user.id != SUPER_ADMIN: return await call.answer("❌ صلاحية محظورة!", show_alert=True)
     kb = InlineKeyboardMarkup(inline_keyboard=[  
-        [InlineKeyboardButton(text="➕ إضافة (قسم فرعي / سلعة / رابط)", callback_data="adm_add_element")],  , style="danger"
-        [InlineKeyboardButton(text="🗑 حذف أي عنصر أو قسم", callback_data="adm_delete_element"), InlineKeyboardButton(text="💰 شحن رصيد مستخدم", callback_data="adm_add_balance")],, style="success"
-        [InlineKeyboardButton(text="📢 إذاعة رسالة جماعية", callback_data="adm_broadcast"), InlineKeyboardButton(text="📊 إحصائيات النظام كاملة", callback_data="adm_stats")],  , style="danger"
-        [InlineKeyboardButton(text="🔙 إغلاق لوحة التحكم", callback_data="back_to_main")]  , style="primary"
+        [InlineKeyboardButton(text="➕ إضافة (قسم فرعي / سلعة / رابط)", callback_data="adm_add_element")],  
+        [InlineKeyboardButton(text="🗑 حذف أي عنصر أو قسم", callback_data="adm_delete_element"), InlineKeyboardButton(text="💰 شحن رصيد مستخدم", callback_data="adm_add_balance")],
+        [InlineKeyboardButton(text="📢 إذاعة رسالة جماعية", callback_data="adm_broadcast"), InlineKeyboardButton(text="📊 إحصائيات النظام كاملة", callback_data="adm_stats")],  
+        [InlineKeyboardButton(text="🔙 إغلاق لوحة التحكم", callback_data="back_to_main")]  
     ])  
     await call.message.edit_text("⚙️ **أهلاً بك يا سيادة المالك في أنظمة إعدادات Drov العليا:**", reply_markup=kb, parse_mode="Markdown")
 
 @dp.callback_query(F.data == "adm_add_element")
 async def adm_add_element(call: types.CallbackQuery):
     folders = db_read("SELECT id, name_ar FROM elements WHERE type='folder'")
-    kb = [[InlineKeyboardButton(text="🔝 في الواجهة الأساسية للمتجر", callback_data="setparent_0")]]  , style="danger"
+    kb = [[InlineKeyboardButton(text="🔝 في الواجهة الأساسية للمتجر", callback_data="setparent_0")]]  
     for f in folders:  
-        kb.append([InlineKeyboardButton(text=f"📁 داخل قسم: {f[1]}", callback_data=f"setparent_{f[0]}")]) , style="danger")
+        kb.append([InlineKeyboardButton(text=f"📁 داخل قسم: {f[1]}", callback_data=f"setparent_{f[0]}")]) 
     await call.message.edit_text("📍 **اختر المجلد الذي تود الإضافة بداخله:**", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="Markdown")
 
 @dp.callback_query(F.data.startswith("setparent_"))
 async def setparent_callback(call: types.CallbackQuery, state: FSMContext):
     await state.update_data(parent_id=int(call.data.split("_")[1]))
     kb = InlineKeyboardMarkup(inline_keyboard=[  
-        [InlineKeyboardButton(text="📁 مجلد (قسم فرعي جديد)", callback_data="settype_folder"), InlineKeyboardButton(text="🔗 رابط خارجي", callback_data="settype_link")],  , style="success"
-        [InlineKeyboardButton(text="📝 سلعة نصية (كود/حساب)", callback_data="settype_text"), InlineKeyboardButton(text="📸 سلعة صورية (ملف/ميديا)", callback_data="settype_media")]  , style="success"
+        [InlineKeyboardButton(text="📁 مجلد (قسم فرعي جديد)", callback_data="settype_folder"), InlineKeyboardButton(text="🔗 رابط خارجي", callback_data="settype_link")],  
+        [InlineKeyboardButton(text="📝 سلعة نصية (كود/حساب)", callback_data="settype_text"), InlineKeyboardButton(text="📸 سلعة صورية (ملف/ميديا)", callback_data="settype_media")]  
     ])  
     await call.message.edit_text("⚙️ **اختر الآن نوع هذا الزر البرمجي الجديد:**", reply_markup=kb, parse_mode="Markdown")
 
@@ -533,7 +533,7 @@ async def adm_add_balance(call: types.CallbackQuery, state: FSMContext):
 async def process_add_bal_id(message: types.Message, state: FSMContext):
     if not message.text.isdigit(): return await message.answer("❌ أرسل ارقام فقط!")
     await state.update_data(target_user=int(message.text))
-    await message.answer("💵 كم **دولار** تريد إضافته لحسابه؟", parse_mode="Markdown")
+    await message.answer("💵 كم **دولار** تريد إضافته لحسابه Privat؟", parse_mode="Markdown")
     await state.set_state(SystemStates.wait_add_balance_amount)
 
 @dp.message(SystemStates.wait_add_balance_amount)
@@ -561,7 +561,7 @@ async def adm_stats(call: types.CallbackQuery):
     
     stat_text = f"📊 **إحصائيات متجر Drov TG الشاملة:**\n\n👥 إجمالي العملاء المسجلين: `{u}`\n📦 إجمالي الأزرار والأقسام: `{e}`\n🛍 إجمالي السلع المباعة: `{p}`"
     
-    await call.message.edit_text(text=stat_text, reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 عودة", callback_data="super_admin_panel")]]), parse_mode="Markdown", style="primary")
+    await call.message.edit_text(text=stat_text, reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 عودة", callback_data="super_admin_panel")]]), parse_mode="Markdown")
 
 @dp.callback_query(F.data == "adm_broadcast")
 async def adm_broadcast(call: types.CallbackQuery, state: FSMContext):
