@@ -8,6 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.exceptions import TelegramAPIError
+from aiohttp import web  # مكتبة الويب لخدعة البورت وبقاء البوت Online
 
 # --- الإعدادات الثابتة للمتجر ---
 BOT_TOKEN = os.getenv('BOT_TOKEN')
@@ -357,5 +358,4 @@ async def main_charge(call: types.CallbackQuery):
     await call.message.edit_text(text=s['charge_title'].format(balance=bal_disp), reply_markup=kb, parse_mode="Markdown")
 
 @dp.callback_query(F.data == "get_daily_gift")
-async def get_daily_gift(call: types.CallbackQuery):
- user_id = call.from_user.id
+async def g
