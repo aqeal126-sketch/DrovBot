@@ -358,4 +358,4 @@ async def main_charge(call: types.CallbackQuery):
 
 @dp.callback_query(F.data == "get_daily_gift")
 async def get_daily_gift(call: types.CallbackQuery):
-    user_id = call.from_user.
+ user_id = call.from_user.id
