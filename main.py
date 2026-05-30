@@ -8,14 +8,14 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.exceptions import TelegramAPIError
-from aiohttp import web  # محرك الويب لضمان حالة Online المستمرة
+from aiohttp import web
 
 # --- الإعدادات الثابتة للمتجر ---
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 SUPER_ADMIN = 8333784255  # معرف المالك المطلق
 
-MY_ACCOUNT_URL = "https://t.me/xq_7d"  # حساب الدعم الفني
-CHANNEL_URL = "https://t.me/drov70"       # قناة التفعيلات
+MY_ACCOUNT_URL = "https://t.me/xq_7d"  
+CHANNEL_URL = "https://t.me/drov70"       
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -359,3 +359,250 @@ async def main_charge(call: types.CallbackQuery):
 
 @dp.callback_query(F.data == "get_daily_gift")
 async def get_daily_gift(call: types.CallbackQuery):
+    user_id = call.from_user.id
+    lang = db_read('SELECT lang FROM users WHERE user_id=?', (user_id,))[0][0]
+    if lang == 'none': lang = 'ar'
+    s = STRINGS[lang]
+    today_str = datetime.now().strftime("%Y-%m-%d")
+
+    last_date_data = db_read('SELECT last_gift_date FROM users WHERE user_id=?', (user_id,))
+    last_date = last_date_data[0][0] if last_date_data else None
+      
+    if last_date == today_str:  
+        await call.answer(s['gift_already'], show_alert=True)  
+    else:  
+        db_write('UPDATE users SET balance = balance + 0.10, last_gift_date=? WHERE user_id=?', (today_str, user_id))  
+        await call.answer(s['gift_success'], show_alert=True)  
+          
+        balance = db_read('SELECT balance FROM users WHERE user_id=?', (user_id,))[0][0]
+        bal_disp = int(balance) if float(balance).is_integer() else balance
+        kb = InlineKeyboardMarkup(inline_keyboard=[  
+            [InlineKeyboardButton(text=s['btn_gift'], callback_data="get_daily_gift")],  
+            [InlineKeyboardButton(text=s['btn_contact_charge'], url=MY_ACCOUNT_URL)],  
+            [InlineKeyboardButton(text=s['btn_back'], callback_data="back_to_main")]  
+        ])  
+        try: await call.message.edit_text(text=s['charge_title'].format(balance=bal_disp), reply_markup=kb, parse_mode="Markdown")  
+        except: pass
+
+@dp.callback_query(F.data == "main_referral")
+async def main_referral(call: types.CallbackQuery):
+    user_id = call.from_user.id
+    lang = db_read('SELECT lang FROM users WHERE user_id=?', (user_id,))[0][0]
+    if lang == 'none': lang = 'ar'
+    bot_info = await bot.get_me()
+    ref_link = f"https://t.me/{bot_info.username}?start={user_id}"
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=STRINGS[lang]['btn_back'], callback_data="back_to_main")]])  
+    await call.message.edit_text(STRINGS[lang]['ref_title'].format(ref_link=ref_link), reply_markup=kb, parse_mode="Markdown")
+
+@dp.callback_query(F.data == "main_purchases")
+async def main_purchases(call: types.CallbackQuery):
+    user_id = call.from_user.id
+    lang = db_read('SELECT lang FROM users WHERE user_id=?', (user_id,))[0][0]
+    if lang == 'none': lang = 'ar'
+    s = STRINGS[lang]
+    
+    rows = db_read('SELECT item_name, purchase_date FROM purchases WHERE user_id=? ORDER BY id DESC', (user_id,))
+    text = s['purchases_title']
+    if not rows:  
+        text += s['no_purchases']
+    else:  
+        for idx, item in enumerate(rows, start=1):  
+            text += f"{idx}. 🛍 `{item[0]}` - 📅: {item[1]}\n"  
+              
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=s['btn_back'], callback_data="back_to_main")]])  
+    await call.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+
+# --- لوحة تحكم المالك ---
+@dp.callback_query(F.data == "super_admin_panel")
+async def super_admin_panel(call: types.CallbackQuery):
+    if call.from_user.id != SUPER_ADMIN: return await call.answer("❌ صلاحية محظورة!", show_alert=True)
+    kb = InlineKeyboardMarkup(inline_keyboard=[  
+        [InlineKeyboardButton(text="➕ إضافة (قسم فرعي / سلعة / رابط)", callback_data="adm_add_element")],  
+        [InlineKeyboardButton(text="🗑 حذف أي عنصر أو قسم", callback_data="adm_delete_element"), InlineKeyboardButton(text="💰 شحن رصيد مستخدم", callback_data="adm_add_balance")],
+        [InlineKeyboardButton(text="📢 إذاعة رسالة جماعية", callback_data="adm_broadcast"), InlineKeyboardButton(text="📊 إحصائيات النظام كاملة", callback_data="adm_stats")],  
+        [InlineKeyboardButton(text="🔙 إغلاق لوحة التحكم", callback_data="back_to_main")]  
+    ])  
+    await call.message.edit_text("⚙️ **أهلاً بك يا سيادة المالك في أنظمة إعدادات Drov العليا:**", reply_markup=kb, parse_mode="Markdown")
+
+@dp.callback_query(F.data == "adm_add_element")
+async def adm_add_element(call: types.CallbackQuery):
+    folders = db_read("SELECT id, name_ar FROM elements WHERE type='folder'")
+    kb = [[InlineKeyboardButton(text="🔝 في الواجهة الأساسية للمتجر", callback_data="setparent_0")]]  
+    for f in folders:  
+        kb.append([InlineKeyboardButton(text=f"📁 داخل قسم: {f[1]}", callback_data=f"setparent_{f[0]}")])  
+    await call.message.edit_text("📍 **اختر المجلد الذي تود الإضافة بداخله:**", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="Markdown")
+
+@dp.callback_query(F.data.startswith("setparent_"))
+async def setparent_callback(call: types.CallbackQuery, state: FSMContext):
+    await state.update_data(parent_id=int(call.data.split("_")[1]))
+    kb = InlineKeyboardMarkup(inline_keyboard=[  
+        [InlineKeyboardButton(text="📁 مجلد (قسم فرعي جديد)", callback_data="settype_folder"), InlineKeyboardButton(text="🔗 رابط خارجي", callback_data="settype_link")],  
+        [InlineKeyboardButton(text="📝 سلعة نصية (كود/حساب)", callback_data="settype_text"), InlineKeyboardButton(text="📸 سلعة صورية (ملف/ميديا)", callback_data="settype_media")]  
+    ])  
+    await call.message.edit_text("⚙️ **اختر الآن نوع هذا الزر البرمجي الجديد:**", reply_markup=kb, parse_mode="Markdown")
+
+@dp.callback_query(F.data.startswith("settype_"))
+async def settype_callback(call: types.CallbackQuery, state: FSMContext):
+    await state.update_data(type=call.data.split("_")[1])
+    await call.message.answer("🇸🇦 أرسل الاسم بـ **اللغة العربية** (سيظهر للعرب):", parse_mode="Markdown")
+    await state.set_state(SystemStates.wait_name_ar)
+
+@dp.message(SystemStates.wait_name_ar)
+async def process_name_ar(message: types.Message, state: FSMContext):
+    await state.update_data(name_ar=message.text)
+    await message.answer("🇺🇸 أرسل الاسم بـ **اللغة الإنجليزية** (سيظهر للأجانب):", parse_mode="Markdown")
+    await state.set_state(SystemStates.wait_name_en)
+
+@dp.message(SystemStates.wait_name_en)
+async def process_name_en(message: types.Message, state: FSMContext):
+    await state.update_data(name_en=message.text)
+    await message.answer("🇷🇺 أرسل الاسم بـ **اللغة الروسية** (سيظهر للروس):", parse_mode="Markdown")
+    await state.set_state(SystemStates.wait_name_ru)
+
+@dp.message(SystemStates.wait_name_ru)
+async def process_name_ru(message: types.Message, state: FSMContext):
+    await state.update_data(name_ru=message.text)
+    data = await state.get_data()
+    
+    if data['type'] in ['folder', 'link']:  
+        await state.update_data(price=0.0)
+        if data['type'] == 'folder':
+            db_write('INSERT INTO elements (parent_id, type, name_ar, name_en, name_ru, content, price) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+                     (data['parent_id'], 'folder', data['name_ar'], data['name_en'], data['name_ru'], 'none', 0.0))  
+            await message.answer("✅ **تم إنشاء المجلد والمزامنة بجميع اللغات!**", parse_mode="Markdown")  
+            await state.clear()  
+        else:
+            await message.answer("🔗 **أرسل رابط القناة أو الموقع الموجه له الآن:**\n(يبدأ بـ http:// أو https://)", parse_mode="Markdown")
+            await state.set_state(SystemStates.wait_content)
+    else:  
+        await message.answer("💰 **أرسل سعر هذه السلعة بالدولار ($) [أرقام فقط]:**\n(مثال: 5 أو 12.50)", parse_mode="Markdown")  
+        await state.set_state(SystemStates.wait_price)
+
+@dp.message(SystemStates.wait_price)
+async def process_price(message: types.Message, state: FSMContext):
+    try:
+        price_val = float(message.text)
+        await state.update_data(price=price_val)
+        await message.answer("📥 **أرسل الآن محتوى السلعة للتسليم التلقائي:**\n(إذا نصية: أرسل الحساب/الكود. إذا صورية: ارفع الصورة مباشرة)", parse_mode="Markdown")  
+        await state.set_state(SystemStates.wait_content)
+    except ValueError:
+        await message.answer("❌ السعر غير صحيح! أرسل أرقام فقط (مثل: 10 أو 4.5):")
+
+@dp.message(SystemStates.wait_content)
+async def process_content(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    if data['type'] == 'media':
+        if not message.photo: return await message.answer("❌ يرجى إرسال ملف صورة حصراً!")
+        content = message.photo[-1].file_id
+    else:
+        if not message.text: return await message.answer("❌ يرجى إرسال نص أو رابط!")
+        content = message.text
+
+    db_write('INSERT INTO elements (parent_id, type, name_ar, name_en, name_ru, content, price) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+             (data['parent_id'], data['type'], data['name_ar'], data['name_en'], data['name_ru'], content, data.get('price', 0.0)))  
+    await message.answer(f"🎯 **تم تثبيت السلعة والأسعار بدقة فائقة بجميع اللغات!**", parse_mode="Markdown")  
+    await state.clear()
+
+@dp.callback_query(F.data == "adm_delete_element")
+async def adm_delete_element(call: types.CallbackQuery, state: FSMContext):
+    items = db_read("SELECT id, name_ar, type FROM elements")
+    if not items: return await call.answer("المتجر فارغ تماماً!", show_alert=True)
+    text = "🗑 **قائمة عناصر المتجر المتوفرة للحذف:**\nأرسل رقم الـ ID للزر المراد مسحه نهائياً:\n\n"
+    for i in items:
+        icon = "📁" if i[2] == 'folder' else "🔗" if i[2] == 'link' else ("🔒" if i[2] == 'soon' else "💎")
+        text += f"ID: `{i[0]}` | {icon} {i[1]}\n"
+    await call.message.answer(text, parse_mode="Markdown")
+    await state.set_state(SystemStates.wait_delete_id)
+
+@dp.message(SystemStates.wait_delete_id)
+async def execute_delete(message: types.Message, state: FSMContext):
+    try:
+        elem_id = int(message.text)
+        db_write("DELETE FROM elements WHERE id=?", (elem_id,))
+        await message.answer("✅ **تم مسح العنصر وتطهير شجرة المتجر بنجاح!**", parse_mode="Markdown")
+    except:
+        await message.answer("❌ الرقم المرسل غير صحيح!")
+    await state.clear()
+
+@dp.callback_query(F.data == "adm_add_balance")
+async def adm_add_balance(call: types.CallbackQuery, state: FSMContext):
+    await call.message.answer("👤 أرسل **معرف الايدي (ID)** للعميل المراد تزويده بالدولارات:", parse_mode="Markdown")
+    await state.set_state(SystemStates.wait_add_balance_id)
+
+@dp.message(SystemStates.wait_add_balance_id)
+async def process_add_bal_id(message: types.Message, state: FSMContext):
+    if not message.text.isdigit(): return await message.answer("❌ أرسل ارقام فقط!")
+    await state.update_data(target_user=int(message.text))
+    await message.answer("💵 كم **دولار** تريد إضافته لحسابه؟", parse_mode="Markdown")
+    await state.set_state(SystemStates.wait_add_balance_amount)
+
+@dp.message(SystemStates.wait_add_balance_amount)
+async def process_add_bal_amt(message: types.Message, state: FSMContext):
+    try:
+        amt = float(message.text)
+        data = await state.get_data()
+        db_write("UPDATE users SET balance = balance + ? WHERE user_id=?", (amt, data['target_user']))
+        await message.answer(f"✅ **تم شحن حساب العميل بـ {amt}$ دولار بنجاح تامة!**", parse_mode="Markdown")
+        try: 
+            ul_data = db_read('SELECT lang FROM users WHERE user_id=?', (data['target_user'],))
+            ul = ul_data[0][0] if ul_data and ul_data[0][0] != 'none' else 'ar'
+            msg_notification = "🎁 تم شحن حسابك من قبل الإدارة بـ **{amt}$** دولار!" if ul == 'ar' else ("🎁 Your account has been charged with **${amt}** USD by admin!" if ul == 'en' else "🎁 Ваш баланс пополнен администрацией на **${amt}** USD!")
+            await bot.send_message(chat_id=data['target_user'], text=msg_notification.format(amt=amt), parse_mode="Markdown")
+        except: pass
+    except:
+        await message.answer("❌ القيمة المدخلة غير صحيحة.")
+    await state.clear()
+
+@dp.callback_query(F.data == "adm_stats")
+async def adm_stats(call: types.CallbackQuery):
+    u = db_read('SELECT COUNT(*) FROM users')[0][0]
+    e = db_read('SELECT COUNT(*) FROM elements')[0][0]
+    p = db_read('SELECT COUNT(*) FROM purchases')[0][0]
+    
+    stat_text = f"📊 **إحصائيات متجر Drov TG الشاملة:**\n\n👥 إجمالي العملاء المسجلين: `{u}`\n📦 إجمالي الأزرار والأقسام: `{e}`\n🛍 إجمالي السلع المباعة: `{p}`"
+    
+    await call.message.edit_text(text=stat_text, reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 عودة", callback_data="super_admin_panel")]]), parse_mode="Markdown")
+
+@dp.callback_query(F.data == "adm_broadcast")
+async def adm_broadcast(call: types.CallbackQuery, state: FSMContext):
+    await call.message.answer("📢 أرسل نص الرسالة الإعلانية للبث والنشر الفوري للجميع:")
+    await state.set_state(SystemStates.wait_broadcast)
+
+@dp.message(SystemStates.wait_broadcast)
+async def execute_broadcast(message: types.Message, state: FSMContext):
+    await message.answer("🔄 جاري البث الفوري للمشتركين...")
+    users = db_read('SELECT user_id FROM users')
+    success = 0  
+    for u in users:  
+        try:  
+            await bot.send_message(chat_id=u[0], text=message.text)  
+            success += 1  
+            await asyncio.sleep(0.05)
+        except TelegramAPIError:
+            continue
+        except Exception:
+            continue
+    await message.answer(f"✅ تمت الإذاعة المطلقة بنجاح ووصلت إلى {success} مستخدم.")  
+    await state.clear()
+
+# --- دالة الاستجابة للمنفذ الوهمي لخدعة السيرفر لمنع حالة Completed ---
+async def handle_ping(request):
+    return web.Response(text="Drov Bot is Online and Running!")
+
+# --- محرك التشغيل المزدوج (البوت + سيرفر الويب) ---
+async def main():
+    print("🚀 تشغيل السيرفر المزدوج لضمان بقاء البوت Online على Railway...")
+    app = web.Application()
+    app.router.add_get('/', handle_ping)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    port = int(os.getenv("PORT", 8080))
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    asyncio.create_task(site.start())
+    
+    await bot.delete_webhook(drop_pending_updates=True)
+    await dp.start_polling(bot)
+
+if __name__ == '__main__':
+    asyncio.run(main())
