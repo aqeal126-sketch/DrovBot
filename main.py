@@ -13,7 +13,7 @@ from aiogram.exceptions import TelegramAPIError
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 SUPER_ADMIN = 8333784255  # معرف المالك المطلق
 
-MY_ACCOUNT_URL = "https://t.me/xq_7d"  # حساب الدعم الفني الخاص بك
+MY_ACCOUNT_URL = "https://t.me/xq_7d"  # دعم المتجر
 CHANNEL_URL = "https://t.me/drov70"       # قناة التفعيلات
 
 bot = Bot(token=BOT_TOKEN)
@@ -114,7 +114,7 @@ STRINGS = {
     }
 }
 
-# --- دوال إدارة قاعدة البيانات الآمنة جداً ---
+# --- دوال إدارة قاعدة البيانات ---
 def db_write(query, args=()):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -159,7 +159,7 @@ def init_db():
 
 init_db()
 
-# --- حالات FSM الخاصة بلوحة التحكم ---
+# --- حالات FSM ---
 class SystemStates(StatesGroup):
     wait_name_ar = State()
     wait_name_en = State()
@@ -171,7 +171,7 @@ class SystemStates(StatesGroup):
     wait_add_balance_id = State()
     wait_add_balance_amount = State()
 
-# --- محركات الكيبورد المترجمة تلقائياً ---
+# --- الكيبوردات ---
 def get_lang_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🇸🇦 العربية", callback_data="setlang_ar")],
@@ -231,7 +231,7 @@ def get_store_keyboard(parent_id, lang):
         kb.append([InlineKeyboardButton(text=s['btn_main_menu'], callback_data="back_to_main")])  
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- معالجة انطلاق البوت وتحديد اللغة ---
+# --- المعالجات الخاصة بالمستخدم ---
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message):
     user_id = message.from_user.id
@@ -294,7 +294,6 @@ async def back_to_main(call: types.CallbackQuery):
         welcome_text = STRINGS[lang]['admin_welcome'] + welcome_text
     await call.message.edit_text(welcome_text, reply_markup=get_main_keyboard(user_id, lang), parse_mode="Markdown")
 
-# --- تصفح وشراء السلع الاحترافي ---
 @dp.callback_query(F.data == "main_buy")
 async def main_buy(call: types.CallbackQuery):
     user_id = call.from_user.id
@@ -340,7 +339,7 @@ async def view_store_element(call: types.CallbackQuery):
         elif item_type == 'media':  
             await call.message.answer_photo(photo=content, caption=f"📸 **{name}**\n\n{s['thanks']}", parse_mode="Markdown")
 
-# --- شحن الرصيد والهدية اليومية ---
+# === [تمت صيانة هذا الجزء - السطر 358 وما بعده] ===
 @dp.callback_query(F.data == "main_charge")
 async def main_charge(call: types.CallbackQuery):
     user_id = call.from_user.id
@@ -355,4 +354,8 @@ async def main_charge(call: types.CallbackQuery):
         [InlineKeyboardButton(text=s['btn_contact_charge'], url=MY_ACCOUNT_URL)],  
         [InlineKeyboardButton(text=s['btn_back'], callback_data="back_to_main")]  
     ])  
-    await call.message.edit_text(s['charge_title'].format(balance=bal_disp), reply_markup=kb, parse_mode="Markdow
+    
+    # تم تصحيح صياغة النص والتأكد من إغلاق دالة الاستدعاء كاملة هنا
+    await call.message.edit_text(text=s['charge_title'].format(balance=bal_disp), reply_markup=kb, parse_mode="Markdown")
+
+@dp.callback_q
